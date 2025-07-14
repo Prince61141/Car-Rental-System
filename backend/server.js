@@ -13,7 +13,10 @@ app.use(cors());
 app.use(express.json());
 
 const userRoutes = require("./routes/userRoutes");
-app.use("/api/users", userRoutes);
+const carRoutes = require("./routes/carRoutes");
+
+app.use("/api/", userRoutes);
+app.use("/api/cars", carRoutes);
 
 
 app.get("/", (req, res) => {

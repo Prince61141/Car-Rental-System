@@ -1,96 +1,159 @@
-import React, { useState } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from "react";
+import carImg from "../assets/car-register.png";
+import Header from "../components/Header";
+import { jwtDecode } from "jwt-decode";
 
 const Login = () => {
-  const [step, setStep] = useState(1);
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const requestOtp = async () => {
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        if (decoded.role === "admin") {
+          window.location.href = "/admin/dashboard";
+        } else if (decoded.role === "renter") {
+          window.location.href = "/renter/dashboard";
+        } else if (decoded.role === "peer-owner") {
+          window.location.href = "/peer-owner/dashboard";
+        } else {
+          window.location.href = "/";
+        }
+      } catch {
+        localStorage.removeItem("token");
+      }
+    }
+  }, []);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
     try {
-      const res = await axios.post("http://localhost:5000/api/users/request-otp", {
-        phone: phone.startsWith("+") ? phone : "+91" + phone,
+      const res = await fetch("http://localhost:5000/api/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: email,
+          password,
+        }),
       });
-      setMessage(res.data.message);
-      setStep(2);
+      const data = await res.json();
+      setLoading(false);
+
+      if (data.success && data.token) {
+        localStorage.setItem("token", data.token);
+        if (data.user.role === "admin") {
+          window.location.href = "/admin/dashboard";
+        } else if (data.user.role === "renter") {
+          window.location.href = "/renter/dashboard";
+        } else if (data.user.role === "peer-owner") {
+          window.location.href = "/peer-owner/dashboard";
+        } else {
+          window.location.href = "/";
+        }
+      } else {
+        setMessage(data.message || "Invalid email or password");
+      }
     } catch (err) {
-      setMessage(err.response?.data?.error || "Error sending OTP");
+      setLoading(false);
+      setMessage("Server error. Please try again.");
     }
   };
 
-  const verifyOtp = async () => {
-    try {
-      const res = await axios.post("http://localhost:5000/api/users/login", {
-        phone: phone.startsWith("+") ? phone : "+91" + phone,
-        otp,
-      });
-
-      const user = res.data.user;
-      localStorage.setItem("user", JSON.stringify(user));
-      alert(`Welcome ${user.name} (${user.role})`);
-
-      // Redirect based on role
-      switch (user.role) {
-        case "admin":
-          window.location.href = "/admin";
-          break;
-        case "fleet":
-          window.location.href = "/fleet";
-          break;
-        case "owner":
-          window.location.href = "/owner";
-          break;
-        default:
-          window.location.href = "/renter";
-      }
-    } catch (err) {
-      setMessage(err.response?.data?.error || "Invalid OTP");
-    }
+  const handleGoogleLogin = () => {
+    alert("Google login coming soon!");
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-      <div className="bg-white p-6 rounded shadow w-full max-w-sm">
-        <h2 className="text-xl font-semibold mb-4">OTP Login</h2>
-
-        {step === 1 && (
-          <>
-            <input
-              type="text"
-              placeholder="Phone Number"
-              className="w-full p-2 border rounded mb-4"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-            <button
-              onClick={requestOtp}
-              className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-            >
-              Send OTP
-            </button>
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            <input
-              type="text"
-              placeholder="Enter OTP"
-              className="w-full p-2 border rounded mb-4"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-            />
-            <button
-              onClick={verifyOtp}
-              className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-            >
-              Verify & Login
-            </button>
-          </>
-        )}
-
-        {message && <p className="mt-4 text-sm text-center text-red-600">{message}</p>}
+    <div>
+      <Header />
+      <div className="flex md:flex-row bg-white">
+        {/* Left: Login Form */}
+        <div className="flex flex-col justify-center px-8 w-full md:w-1/2 min-h-screen">
+          <div className="max-w-md w-full mx-auto">
+            <h1 className="text-5xl font-extrabold text-[#3d3356] mb-2 leading-tight">
+              hello,
+              <br />
+              welcome back
+            </h1>
+            <p className="text-[#3d3356] text-opacity-60 mb-8">
+              hey, welcome back to you favourite rental platform
+            </p>
+            <form onSubmit={handleLogin} className="space-y-5">
+              <input
+                type="email"
+                placeholder="Enter Your Email"
+                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-purple-400"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-purple-400"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <div className="flex items-center justify-between">
+                <label className="flex items-center text-[#3d3356] text-opacity-80 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                    className="mr-2"
+                  />
+                  Remember me
+                </label>
+                <button
+                  type="button"
+                  className="text-[#3d3356] text-opacity-80 hover:underline text-sm"
+                  onClick={() => alert("Forgot password coming soon!")}
+                >
+                  forgot password?
+                </button>
+              </div>
+              <div className="flex gap-4 mt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-[#3d3356] text-white py-3 rounded-lg font-semibold text-lg hover:bg-[#2a223e] transition disabled:opacity-60"
+                  disabled={loading}
+                >
+                  {loading ? "Logging in..." : "Login"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  className="flex-1 border border-[#3d3356] text-[#3d3356] py-3 rounded-lg font-semibold text-lg hover:bg-[#f6f4fa] transition"
+                >
+                  continue with google
+                </button>
+              </div>
+              {message && (
+                <div className="text-red-600 text-sm text-center mt-2">
+                  {message}
+                </div>
+              )}
+            </form>
+            <div className="mt-5 text-[#3d3356]  center text-opacity-80 text-sm">
+              Don't have account?{" "}
+              <a href="/register" className="font-semibold hover:underline">
+                Sign up
+              </a>
+            </div>
+          </div>
+        </div>
+        {/* Right: Car and Person Image */}
+        <div className="hidden md:flex w-1/2 relative bg-transparent">
+          <img src={carImg} alt="Car and person" className="drop-shadow-2xl" />
+        </div>
       </div>
     </div>
   );

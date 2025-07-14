@@ -2,23 +2,25 @@ import twilio from "twilio";
 import dotenv from "dotenv";
 dotenv.config();
 
-const accountSid = process.env.TWILIO_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioPhone = process.env.TWILIO_PHONE;
+const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
 
-const client = twilio(accountSid, authToken);
+const otpMap = new Map();
 
-export const sendOtp = async (phone, otp) => {
-  try {
-    const message = await client.messages.create({
-      body: `Your OTP is: ${otp}`,
-      from: twilioPhone,
-      to: phone,
-    });
-    return message.sid;
-  } catch (error) {
-    console.error("OTP Send Error:", error);
-    throw error;
-  }
+export const generateAndSendOtp = async (phone) => {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  otpMap.set(phone, otp);
+
+  await client.messages.create({
+    body: `Your AutoConnect OTP is ${otp}`,
+    from: process.env.TWILIO_PHONE,
+    to: `+91${phone}`,
+  });
+
+  return otp;
 };
 
+export const verifyOtp = (phone, otp) => {
+  const valid = otpMap.get(phone) === otp;
+  if (valid) otpMap.delete(phone);
+  return valid;
+};

@@ -1,89 +1,107 @@
+
 import User from "../models/User.js";
-import { generateAndSendOtp } from "../utils/otpHandler.js";
-import { sendOtp } from "../utils/sendOtp.js";
+import jwt from "jsonwebtoken";
 import sendEmail from "../utils/sendEmail.js";
-const otpMap = new Map(); // for both registration & login
-const formatPhone = (phone) => (!phone.startsWith("+") ? "+91" + phone : phone);
+import { generateAndSendOtp, verifyOtp } from "../utils/sendOtp.js";
 
-// Request OTP
-export const requestOtp = async (req, res) => {
-  const phone = formatPhone(req.body.phone);
-  if (!phone) return res.status(400).json({ error: "Phone number required" });
-
+export const registerWithPhone = async (req, res) => {
+  const { name, email, phone, password, role } = req.body;
   try {
-    await generateAndSendOtp(phone, otpMap);
-    res.json({ success: true, message: "OTP sent to phone" });
+    const exists = await User.findOne({ $or: [{ email }, { phone }] });
+    if (exists) return res.status(400).json({ message: "User already exists" });
+
+    const tempToken = jwt.sign({ name, email, phone,password, role }, "tempSecret", { expiresIn: "10m" });
+
+    await generateAndSendOtp(phone);
+    res.json({ success: true, tempToken });
   } catch (err) {
-    res.status(500).json({ error: "Failed to send OTP" });
+    console.error(err);
+    res.status(500).json({ message: "OTP send failed" });
   }
 };
 
-// Register with OTP
-export const registerUser = async (req, res) => {
-  const { name, email, password, phone, role, otp } = req.body;
-  const fullPhone = formatPhone(phone);
-
-  if (otpMap.get(fullPhone) !== otp) {
-    return res.status(400).json({ error: "Invalid or expired OTP" });
-  }
-
+// Step 2: Verify OTP, then save user
+export const verifyPhoneOtp = async (req, res) => {
+  const { tempToken, otp } = req.body;
   try {
-    const existing = await User.findOne({ email });
-    if (existing)
-      return res.status(409).json({ error: "Email already registered" });
+    const decoded = jwt.verify(tempToken, "tempSecret");
+    const { name, email, phone,password, role } = decoded;
 
-    const newUser = new User({
-      name,
-      email,
-      phone: fullPhone,
-      role: role || "renter",
-    });
+    const exists = await User.findOne({ $or: [{ email }, { phone }] });
+    if (exists) return res.status(400).json({ message: "User already exists" });
 
-    await newUser.save();
-    otpMap.delete(fullPhone);
+    const valid = verifyOtp(phone, otp);
+    if (!valid) return res.status(400).json({ message: "Invalid OTP" });
 
-    res.status(201).json({
-      message: "User registered successfully",
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        phone: newUser.phone,
-        role: newUser.role,
-      },
-    });
-    await sendEmail(
-      newUser.email,
-      "Welcome to Car Rental!",
-      `Hello ${newUser.name},\n\nThanks for registering on Car Rental System.\n\nYou can now log in and start booking or listing cars.\n\n🚗 Happy Renting!`
-    );
+    const user = new User({ name, email, phone,password, role, verified: true });
+    await user.save();
+
+    try {
+      await sendEmail({
+        to: email,
+        subject: "Welcome to AutoConnect!",
+        text: `Hello ${name},\n\nYour registration was successful. Welcome to AutoConnect!`,
+        html: `<p>Hello <b>${name}</b>,</p><p>Your registration was successful. Welcome to AutoConnect!</p>`
+      });
+    } catch (mailErr) {
+      console.error("Failed to send welcome email:", mailErr);
+    }
+
+    res.json({ success: true, userId: user._id });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ message: "OTP verification failed" });
   }
 };
 
-// Login with OTP
+export const resendOtp = async (req, res) => {
+  const { tempToken } = req.body;
+  try {
+    const decoded = jwt.verify(tempToken, "tempSecret");
+    const { phone } = decoded;
+
+    // Resend OTP
+    await generateAndSendOtp(phone);
+    res.json({ success: true, message: "OTP resent successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to resend OTP" });
+  }
+};
+
 export const loginUser = async (req, res) => {
-  const { phone, otp } = req.body;
-  const fullPhone = formatPhone(phone);
+  const { identifier, password } = req.body;
 
-  if (otpMap.get(fullPhone) !== otp) {
-    return res.status(400).json({ error: "Invalid OTP" });
+  try {
+    const user = await User.findOne({
+      $or: [{ email: identifier }, { phone: identifier }]
+    });
+
+    if (!user)
+      return res.status(404).json({ success: false, message: "User not found" });
+
+    if (user.password !== password)
+      return res.status(401).json({ success: false, message: "Invalid password" });
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      "secretKey",
+      { expiresIn: "1d" }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server Error" });
   }
-
-  const user = await User.findOne({ phone: fullPhone });
-  if (!user) return res.status(404).json({ error: "User not found" });
-
-  otpMap.delete(fullPhone);
-
-  res.json({
-    message: "Login successful",
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-    },
-  });
 };
