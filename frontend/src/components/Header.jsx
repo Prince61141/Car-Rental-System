@@ -1,25 +1,107 @@
-function Header() {
+import React, { useState, useEffect } from "react";
+import { FaBars, FaTimes } from "react-icons/fa";
+
+export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className="bg-white shadow-sm sticky">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Logo</h1>
-            </div>
-            <nav className="hidden md:flex space-x-8">
-              <a href="/" className="text-gray-700 hover:text-blue-600 transition-colors">Home</a>
-              <a href="/about-us" className="text-gray-700 hover:text-blue-600 transition-colors">About Us</a>
-              <a href="/service" className="text-gray-700 hover:text-blue-600 transition-colors">Services</a>
-              <a href="#" className="text-gray-700 hover:text-blue-600 transition-colors">Car Rental</a>
-              <a href="/contact" className="text-gray-700 hover:text-blue-600 transition-colors">Contact</a>
-            </nav>
-            <button className="bg-blue-600 px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-              <a href="/register" className="no-underline text-white">Sign Up</a>
+    <nav
+      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+        scrolled ? "bg-white shadow-md" : "bg-transparent"
+      } p-4`}
+    >
+      <div className="flex justify-between items-center max-w-7xl mx-auto">
+        {/* Logo */}
+        <div className="text-2xl font-bold text-purple-900 tracking-tight">
+          AutoConnect
+        </div>
+
+        {/* Desktop Menu */}
+        <ul className="hidden md:flex gap-10 text-gray-700 font-medium">
+          <li>
+            <a href="#" className="hover:text-purple-900">
+              Home
+            </a>
+          </li>
+          <li>
+            <a href="#" className="hover:text-purple-900">
+              Cars
+            </a>
+          </li>
+          <li>
+            <a href="#" className="hover:text-purple-900">
+              About
+            </a>
+          </li>
+          <li>
+            <a
+              href="#"
+              className="hover:text-purple-900 font-semibold underline underline-offset-4"
+            >
+              Contact Us
+            </a>
+          </li>
+        </ul>
+
+        {/* Desktop Buttons */}
+        <div className="hidden md:flex gap-4">
+          <button className="px-5 py-2 rounded-lg border border-purple-900 text-purple-900 font-semibold uppercase hover:bg-purple-50 transition">
+            Become a Host
+          </button>
+          <button className="px-5 py-2 rounded-lg bg-purple-900 text-white font-semibold uppercase hover:bg-purple-800 transition">
+            Login/Sign Up
+          </button>
+        </div>
+
+        {/* Mobile Menu Icon */}
+        <div className="md:hidden">
+          <button onClick={() => setMenuOpen(!menuOpen)}>
+            {menuOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Dropdown Menu */}
+      {menuOpen && (
+        <div className="md:hidden mt-4 space-y-4 px-4 pb-4 border-t pt-4 bg-white/90 rounded shadow-lg">
+          <ul className="flex flex-col gap-4 text-gray-700 font-medium">
+            <li>
+              <a href="#">Home</a>
+            </li>
+            <li>
+              <a href="#">Cars</a>
+            </li>
+            <li>
+              <a href="#">About</a>
+            </li>
+            <li>
+              <a
+                href="#"
+                className="font-semibold underline underline-offset-4"
+              >
+                Contact Us
+              </a>
+            </li>
+          </ul>
+          <div className="flex flex-col gap-2 mt-4">
+            <button className="px-4 py-2 rounded-lg border border-purple-900 text-purple-900 font-semibold uppercase">
+              Become a Host
+            </button>
+            <button className="px-4 py-2 rounded-lg bg-purple-900 text-white font-semibold uppercase">
+              Login/Sign Up
             </button>
           </div>
         </div>
-      </header>
+      )}
+    </nav>
   );
 }
-
-export default Header;
