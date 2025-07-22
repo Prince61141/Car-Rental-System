@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import carImg from "../assets/car-register.png";
 import Header from "../components/Header";
 import { jwtDecode } from "jwt-decode";
+import "../assets/loading.css";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -9,6 +10,8 @@ const Login = () => {
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  const [authChecking, setAuthChecking] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -26,9 +29,24 @@ const Login = () => {
         }
       } catch {
         localStorage.removeItem("token");
+        setAuthChecking(false);
       }
+    } else {
+      setAuthChecking(false);
     }
   }, []);
+
+  if (authChecking) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
+        <div className="three-body flex gap-2">
+          <div className="three-body__dot"></div>
+          <div className="three-body__dot"></div>
+          <div className="three-body__dot"></div>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -72,7 +90,7 @@ const Login = () => {
 
   return (
     <div>
-      <Header />
+      <Header scrollEffect={false} />
       <div className="flex md:flex-row bg-white">
         {/* Left: Login Form */}
         <div className="flex flex-col justify-center px-8 w-full md:w-1/2 min-h-screen">

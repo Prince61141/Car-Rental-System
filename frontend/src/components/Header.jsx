@@ -1,22 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
-export default function Navbar() {
+export default function Navbar({ scrollEffect }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > 10);
-    };
+    if (!scrollEffect) return;
+    const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [scrollEffect]);
 
   return (
     <nav
       className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        scrolled ? "bg-white shadow-md" : "bg-transparent"
+        scrollEffect
+          ? scrolled
+            ? "bg-white shadow-md"
+            : "bg-transparent"
+          : "bg-white shadow-md"
       } p-4`}
     >
       <div className="flex justify-between items-center max-w-7xl mx-auto">
@@ -28,7 +32,7 @@ export default function Navbar() {
         {/* Desktop Menu */}
         <ul className="hidden md:flex gap-10 text-gray-700 font-medium">
           <li>
-            <a href="#" className="hover:text-purple-900">
+            <a href="/" className="hover:text-purple-900">
               Home
             </a>
           </li>
@@ -38,13 +42,13 @@ export default function Navbar() {
             </a>
           </li>
           <li>
-            <a href="#" className="hover:text-purple-900">
+            <a href="/about" className="hover:text-purple-900">
               About
             </a>
           </li>
           <li>
             <a
-              href="#"
+              href="/contact-us"
               className="hover:text-purple-900 font-semibold underline underline-offset-4"
             >
               Contact Us
@@ -57,9 +61,12 @@ export default function Navbar() {
           <button className="px-5 py-2 rounded-lg border border-purple-900 text-purple-900 font-semibold uppercase hover:bg-purple-50 transition">
             Become a Host
           </button>
-          <button className="px-5 py-2 rounded-lg bg-purple-900 text-white font-semibold uppercase hover:bg-purple-800 transition">
-            Login/Sign Up
-          </button>
+            <Link
+              to="/login"
+              className="px-5 py-2 rounded-lg bg-purple-900 text-white font-semibold uppercase hover:bg-purple-800 transition"
+            >
+              Login/Sign Up
+            </Link>
         </div>
 
         {/* Mobile Menu Icon */}
@@ -96,9 +103,12 @@ export default function Navbar() {
             <button className="px-4 py-2 rounded-lg border border-purple-900 text-purple-900 font-semibold uppercase">
               Become a Host
             </button>
-            <button className="px-4 py-2 rounded-lg bg-purple-900 text-white font-semibold uppercase">
+            <Link
+              to="/login"
+              className="px-5 py-2 rounded-lg bg-purple-900 text-white font-semibold uppercase hover:bg-purple-800 transition flex items-center justify-center"
+            >
               Login/Sign Up
-            </button>
+            </Link>
           </div>
         </div>
       )}

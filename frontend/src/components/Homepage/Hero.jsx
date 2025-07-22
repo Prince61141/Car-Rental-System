@@ -1,5 +1,5 @@
 import React from "react";
-import carImage from "../assets/car.png";
+import carImage from "../../assets/car.png";
 
 export default function Hero() {
   return (

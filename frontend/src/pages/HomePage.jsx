@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import Hero from '../components/Hero';
-import SearchBar from '../components/Searchbar';
-import Features from '../components/Feature';
+import Hero from '../components/Homepage/Hero';
+import SearchBar from '../components/Homepage/Searchbar';
+import Features from '../components/Homepage/Feature';
 import Chatbot from '../components/Chatbot';
-import Testimonial from '../components/Testimonal';
+import Testimonial from '../components/Homepage/Testimonal';
 
 export default function CarRentalWebsite() {
   const [selectedTab, setSelectedTab] = useState('Popular');
@@ -23,10 +23,11 @@ export default function CarRentalWebsite() {
     { id: 7, name: 'Porsche Cayenne', price: 110, image: 'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80' },
     { id: 8, name: 'Tesla Model Y', price: 90, image: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80' },
   ];
+  
 
   return (
-    <div>
-      <Header />
+    <div style={{ webkitscrollbar: 'none' }}>
+      <Header scrollEffect={true} />
 
       <Hero />
 
