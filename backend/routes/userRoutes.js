@@ -39,5 +39,3 @@ router.get("/fleet/dashboard", authenticateToken, (req, res) => {
 });
 
 module.exports = router;
-
-module.exports = router;

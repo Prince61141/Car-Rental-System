@@ -1,7 +1,19 @@
-const express = require("express");
+import express from "express";
+import { addMyCar, getMyCars, multerInstance } from "../controllers/carController.js";
+
 const router = express.Router();
-const { getMyCars } = require("../controllers/carController.js");
 
-router.post("/my", getMyCars);
+router.post(
+  "/addcar",
+  multerInstance.fields([
+    { name: "images", maxCount: 5 },
+    { name: "rc", maxCount: 1 },
+    { name: "insurance", maxCount: 1 },
+    { name: "pollution", maxCount: 1 },
+  ]),
+  addMyCar
+);
 
-module.exports = router;
+router.get("/mycars", getMyCars);
+
+export default router;

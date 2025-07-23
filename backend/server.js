@@ -1,9 +1,13 @@
-const express = require("express");
-const cors = require("cors");
-const connectDB = require("./config/db");
+import express from "express";
+import cors from "cors";
+import connectDB from "./config/db.js";
+import dotenv from "dotenv";
 
-require("dotenv").config();
+import userRoutes from "./routes/userRoutes.js";
+import carRoutes from "./routes/carRoutes.js";
+import ownerRoutes from "./routes/ownerRoutes.js";
 
+dotenv.config();
 connectDB();
 
 const app = express();
@@ -12,12 +16,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const userRoutes = require("./routes/userRoutes");
-const carRoutes = require("./routes/carRoutes");
-
 app.use("/api/", userRoutes);
 app.use("/api/cars", carRoutes);
-
+app.use("/api/owners", ownerRoutes);
 
 app.get("/", (req, res) => {
   res.send("🚗 Car Rental API is running...");

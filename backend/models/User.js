@@ -13,6 +13,12 @@ const userSchema = new mongoose.Schema({
   document: String,
   verified: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+userSchema.pre("save", function (next) {
+  this.updatedAt = Date.now();
+  next();
 });
 
 module.exports = mongoose.model("User", userSchema);

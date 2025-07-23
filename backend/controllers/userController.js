@@ -1,4 +1,3 @@
-
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import sendEmail from "../utils/sendEmail.js";
@@ -84,9 +83,9 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ success: false, message: "Invalid password" });
 
     const token = jwt.sign(
-      { id: user._id, role: user.role },
-      "secretKey",
-      { expiresIn: "1d" }
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
     );
 
     res.status(200).json({

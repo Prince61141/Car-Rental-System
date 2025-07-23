@@ -6,6 +6,7 @@ import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
+import Dashboard from "./components/Owner_Dashboard/Dashbaord";
 
 function App() {
   return (
@@ -17,7 +18,8 @@ function App() {
         <Route path="/contact-us" element={<Contact />} />
         <Route path="/about" element={<About />} />
         <Route path="*" element={<NotFound />} />
-      </Routes>
+        <Route path="/peer-owner/dashboard" element={<Dashboard />} />
+      </Routes>s
     </Router>
   );
 }
