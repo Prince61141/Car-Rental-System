@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 
-function ListCar({ onAddCar, onClose }) {
+function ListCar({ onCarAdded, onClose }) {
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [carForm, setCarForm] = useState({
     title: "",
     brand: "",
@@ -31,7 +32,6 @@ function ListCar({ onAddCar, onClose }) {
 
   const handleCarFormChange = (e) => {
     const { name, value } = e.target;
-
     if (["city", "state", "country", "addressLine", "pincode"].includes(name)) {
       setCarForm((prev) => ({
         ...prev,
@@ -49,9 +49,17 @@ function ListCar({ onAddCar, onClose }) {
   };
 
   const handleCarImage = (e) => {
+    const files = [...e.target.files].slice(0, 5);
     setCarForm((prev) => ({
       ...prev,
-      images: [...e.target.files].slice(0, 5),
+      images: files,
+    }));
+  };
+
+  const removeImage = (index) => {
+    setCarForm((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
     }));
   };
 
@@ -76,54 +84,86 @@ function ListCar({ onAddCar, onClose }) {
     setStep((prev) => prev - 1);
   };
 
-  const handleCarSubmit = (e) => {
+  const handleCarSubmit = async (e) => {
     e.preventDefault();
+    const {
+      title,
+      brand,
+      model,
+      carnumber,
+      pricePerDay,
+      year,
+      images,
+      documents: { rc, insurance, pollution },
+    } = carForm;
+
     if (
-      !carForm.title ||
-      !carForm.brand ||
-      !carForm.model ||
-      !carForm.carnumber ||
-      !carForm.pricePerDay ||
-      !carForm.year ||
-      carForm.images.length === 0 ||
-      !carForm.documents.rc ||
-      !carForm.documents.insurance ||
-      !carForm.documents.pollution
+      !title ||
+      !brand ||
+      !model ||
+      !carnumber ||
+      !pricePerDay ||
+      !year ||
+      images.length === 0 ||
+      !rc ||
+      !insurance ||
+      !pollution
     ) {
       alert("Please fill all required fields and upload all documents.");
       return;
     }
 
-    onAddCar(carForm);
+    setLoading(true);
 
-    setCarForm({
-      title: "",
-      brand: "",
-      model: "",
-      carnumber: "",
-      year: "",
-      pricePerDay: "",
-      fuelType: "",
-      transmission: "",
-      seats: "",
-      location: {
-        city: "",
-        state: "",
-        country: "India",
-        addressLine: "",
-        pincode: "",
-      },
-      availability: true,
-      images: [],
-      documents: {
-        rc: null,
-        insurance: null,
-        pollution: null,
-      },
-      description: "",
-    });
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      // Append all carForm fields to formData
+      formData.append("title", carForm.title);
+      formData.append("brand", carForm.brand);
+      formData.append("model", carForm.model);
+      formData.append("carnumber", carForm.carnumber);
+      formData.append("year", carForm.year);
+      formData.append("pricePerDay", carForm.pricePerDay);
+      formData.append("fuelType", carForm.fuelType);
+      formData.append("transmission", carForm.transmission);
+      formData.append("seats", carForm.seats);
+      formData.append("location", JSON.stringify(carForm.location));
+      formData.append("description", carForm.description);
 
-    onClose();
+      carForm.images.forEach((img) => {
+        formData.append("images", img);
+      });
+
+      if (carForm.documents) {
+        formData.append("rc", carForm.documents.rc);
+        formData.append("insurance", carForm.documents.insurance);
+        formData.append("pollution", carForm.documents.pollution);
+      }
+
+      const res = await fetch("http://localhost:5000/api/cars/addcar", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        if (onCarAdded) onCarAdded(data.car); // notify parent
+        setLoading(false);
+        onClose();
+      } else {
+        alert(data.message || "Failed to add car");
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Server error. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -132,7 +172,10 @@ function ListCar({ onAddCar, onClose }) {
         onSubmit={step === 4 ? handleCarSubmit : handleNext}
         className="bg-white p-6 rounded shadow-lg w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto"
       >
-        <h2 className="text-xl font-bold text-[#3d3356]">List a New Car</h2>
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold text-[#3d3356]">List a New Car</h2>
+          <span className="text-sm text-gray-500">Step {step} of 4</span>
+        </div>
 
         {step === 1 && (
           <>
@@ -169,7 +212,7 @@ function ListCar({ onAddCar, onClose }) {
               value={carForm.carnumber}
               onChange={handleCarFormChange}
               required
-              className="w-full border px-4 py-2 rounded"
+              className="w-full border px-4 py-2 rounded mb-2"
               placeholder="Car Number (e.g. MH12AB1234)"
             />
             <input
@@ -315,42 +358,37 @@ function ListCar({ onAddCar, onClose }) {
             />
             <div className="flex gap-2 mt-2 flex-wrap">
               {carForm.images.map((img, idx) => (
-                <img
-                  key={idx}
-                  src={URL.createObjectURL(img)}
-                  alt="Car"
-                  className="w-16 h-12 object-cover rounded border"
-                />
+                <div key={idx} className="relative group">
+                  <img
+                    src={URL.createObjectURL(img)}
+                    alt="Car"
+                    className="w-16 h-12 object-cover rounded border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(idx)}
+                    className="absolute top-[-6px] right-[-6px] bg-red-500 text-white text-xs rounded-full px-1"
+                  >
+                    x
+                  </button>
+                </div>
               ))}
             </div>
 
             <label className="block mt-4 mb-1 font-medium">
-              Upload Documents (PDF/Image)
+              Upload Documents
             </label>
-            <input
-              type="file"
-              name="rc"
-              accept="application/pdf,image/*"
-              onChange={handleDocumentUpload}
-              className="w-full mb-2"
-              required
-            />
-            <input
-              type="file"
-              name="insurance"
-              accept="application/pdf,image/*"
-              onChange={handleDocumentUpload}
-              className="w-full mb-2"
-              required
-            />
-            <input
-              type="file"
-              name="pollution"
-              accept="application/pdf,image/*"
-              onChange={handleDocumentUpload}
-              className="w-full mb-2"
-              required
-            />
+            {["rc", "insurance", "pollution"].map((doc) => (
+              <input
+                key={doc}
+                type="file"
+                name={doc}
+                accept="application/pdf,image/*"
+                onChange={handleDocumentUpload}
+                className="w-full mb-2"
+                required
+              />
+            ))}
 
             <div className="flex justify-between">
               <button
@@ -392,9 +430,10 @@ function ListCar({ onAddCar, onClose }) {
               </button>
               <button
                 type="submit"
+                disabled={loading}
                 className="bg-green-600 text-white px-6 py-2 rounded font-semibold hover:bg-green-700 transition"
               >
-                List Car
+                {loading ? "Listing..." : "List Car"}
               </button>
             </div>
           </>

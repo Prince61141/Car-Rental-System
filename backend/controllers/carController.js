@@ -1,6 +1,7 @@
 import Car from "../models/Car.js";
 import jwt from "jsonwebtoken";
 import multer from "multer";
+import cloudinary from "../utils/cloudinary.js";
 
 const storage = multer.memoryStorage();
 export const multerInstance = multer({
@@ -37,15 +38,41 @@ export const addMyCar = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
-    const images = (req.files?.images || []).map(file => file.buffer.toString("base64"));
+    // ⬇️ Upload images to Cloudinary
+    const imageUrls = [];
+    if (req.files?.images) {
+      for (const file of req.files.images) {
+        const uploadRes = await cloudinary.uploader.upload_stream({ folder: "cars/images" }, (err, result) => {
+          if (err) throw err;
+          imageUrls.push(result.secure_url);
+        });
+        uploadRes.end(file.buffer);
+      }
+    }
 
-    const documents = {
-      rc: req.files?.rc?.[0]?.buffer.toString("base64") || null,
-      insurance: req.files?.insurance?.[0]?.buffer.toString("base64") || null,
-      pollution: req.files?.pollution?.[0]?.buffer.toString("base64") || null,
-    };
+    // ⬇️ Upload documents
+    const documentUrls = {};
+    const docFields = ["rc", "insurance", "pollution"];
 
-    if (!documents.rc || !documents.insurance || !documents.pollution) {
+    for (const field of docFields) {
+      const file = req.files?.[field]?.[0];
+      if (file) {
+        const result = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { folder: "cars/documents", public_id: `${carnumber}_${field}` },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          stream.end(file.buffer);
+        });
+        documentUrls[field] = result.secure_url;
+      }
+    }
+
+    // Ensure all docs uploaded
+    if (!documentUrls.rc || !documentUrls.insurance || !documentUrls.pollution) {
       return res.status(400).json({ success: false, message: "All documents must be uploaded" });
     }
 
@@ -67,14 +94,15 @@ export const addMyCar = async (req, res) => {
         pincode: parsedLocation.pincode || "",
       },
       availability,
-      image: images,
-      documents,
+      image: imageUrls,
+      documents: documentUrls,
       description,
       owner: ownerId,
     });
 
     await car.save();
     res.status(201).json({ success: true, car });
+
   } catch (err) {
     console.error("Add Car Error:", err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -95,3 +123,12 @@ export const getMyCars = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+export const getallCars = async (req, res) => {
+  try {
+    const cars = await Car.find();
+    res.json({ success: true, cars });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+}

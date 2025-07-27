@@ -95,7 +95,7 @@ export const verifyOwner = async (req, res) => {
 
     user.verified = true;
     user.role = "peer-owner";
-    user.document = `Aadhar:${aadhar},PAN:${pan}`;
+    user.document = { Aadhar: aadhar, PAN: pan };
     user.updatedAt = Date.now();
 
     await user.save();
@@ -117,5 +117,42 @@ export const verifyOwner = async (req, res) => {
   } catch (err) {
     console.error("Verify Owner Error:", err);
     return res.status(500).json({ verified: false, message: "Server error" });
+  }
+};
+
+export const updateMe = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+
+    const { name, phone, address, aadhar, pan } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (address) user.address = address;
+    if (aadhar && pan) user.document = { Aadhar: aadhar, PAN: pan };
+
+    await user.save();
+
+    res.json({ success: true, message: "Profile updated", user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      address: user.address,
+      aadhar,
+      pan,
+      role: user.role,
+      verified: user.verified,
+      document: user.document,
+    }});
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

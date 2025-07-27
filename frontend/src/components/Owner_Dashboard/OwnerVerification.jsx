@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { CheckCircle, Loader2 } from "lucide-react"; // Optional icon library
 
 function OwnerVerification({ onVerify, aadhar, setAadhar, pan, setPan }) {
   const [loading, setLoading] = useState(false);
@@ -43,7 +44,7 @@ function OwnerVerification({ onVerify, aadhar, setAadhar, pan, setPan }) {
           } else {
             setVerifiedName("");
           }
-        } catch (err) {
+        } catch {
           setVerifiedName("");
         } finally {
           setLookupLoading(false);
@@ -82,61 +83,102 @@ function OwnerVerification({ onVerify, aadhar, setAadhar, pan, setPan }) {
       } else {
         setError(data.message || "Verification failed");
       }
-    } catch (err) {
+    } catch {
       setLoading(false);
       setError("Server error. Please try again.");
     }
   };
 
   return (
-    <div className="max-w-lg mx-auto mt-20 bg-white p-8 rounded shadow">
-      <h2 className="text-xl font-bold mb-4 text-[#3d3356]">
+    <div className="max-w-lg mx-auto mt-20 bg-white p-8 rounded-lg shadow-lg transition-all">
+      <h2 className="text-2xl font-bold mb-6 text-[#3d3356]">
         Owner Verification
       </h2>
+
       <form onSubmit={handleVerify} className="space-y-4">
+        {/* Aadhar Input */}
         <div>
-          <label className="block mb-1 font-medium">Aadhar Card Number</label>
+          <label className="block mb-1 font-medium text-gray-700">
+            Aadhar Card Number
+          </label>
           <input
             type="text"
             value={aadhar}
-            onChange={(e) => setAadhar(e.target.value)}
+            onChange={(e) => setAadhar(e.target.value.replace(/\D/g, ""))}
             required
-            className="w-full border px-4 py-2 rounded"
-            placeholder="Enter your Aadhar number"
+            className={`w-full border-2 px-4 py-2 rounded focus:outline-none transition ${
+              aadhar.length === 12
+                ? "border-green-500"
+                : "border-gray-300 focus:border-[#3d3356]"
+            }`}
+            placeholder="Enter 12-digit Aadhar number"
             maxLength={12}
           />
         </div>
+
+        {/* PAN Input */}
         <div>
-          <label className="block mb-1 font-medium">PAN Card Number</label>
+          <label className="block mb-1 font-medium text-gray-700">
+            PAN Card Number
+          </label>
           <input
             type="text"
             value={pan}
-            onChange={(e) => setPan(e.target.value.toUpperCase())}
+            onChange={(e) =>
+              setPan(e.target.value.toUpperCase().replace(/[^A-Z0-9]/gi, ""))
+            }
             required
-            className="w-full border px-4 py-2 rounded"
-            placeholder="Enter your PAN number"
+            className={`w-full border-2 px-4 py-2 rounded focus:outline-none transition ${
+              pan.length === 10
+                ? "border-green-500"
+                : "border-gray-300 focus:border-[#3d3356]"
+            }`}
+            placeholder="Enter 10-character PAN number"
             maxLength={10}
           />
         </div>
 
-        {verifiedName && (
-          <div className="text-gray-500 mt-2 font-medium">{verifiedName}</div>
-        )}
-
+        {/* Lookup result */}
         {lookupLoading && (
-          <div className="text-sm text-gray-500">Checking records...</div>
+          <div className="text-sm text-gray-500">🔍 Checking records...</div>
+        )}
+        {verifiedName && (
+          <div className="flex items-center gap-2 text-green-600 font-medium mt-1">
+            <CheckCircle size={18} className="text-green-500" />
+            Name matched: {verifiedName}
+          </div>
         )}
 
+        {/* Error Message */}
         {error && <div className="text-red-600 text-sm">{error}</div>}
 
+        {/* Submit Button */}
         <button
           type="submit"
-          className="bg-[#3d3356] text-white px-6 py-2 rounded font-semibold hover:bg-[#2a223e] transition"
-          disabled={loading}
+          className={`w-full bg-[#3d3356] text-white px-6 py-2 rounded font-semibold transition hover:bg-[#2a223e] flex items-center justify-center gap-2 ${
+            loading || !(aadhar.length === 12 && pan.length === 10)
+              ? "opacity-50 cursor-not-allowed"
+              : ""
+          }`}
+          disabled={loading || !(aadhar.length === 12 && pan.length === 10)}
         >
-          {loading ? "Verifying..." : "Verify & Continue"}
+          {loading ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              Verifying...
+            </>
+          ) : (
+            "Verify & Continue"
+          )}
         </button>
       </form>
+
+      {/* Already verified message */}
+      {alreadyVerified && (
+        <div className="mt-4 text-green-600 font-medium text-center">
+          ✅ You are already verified.
+        </div>
+      )}
     </div>
   );
 }

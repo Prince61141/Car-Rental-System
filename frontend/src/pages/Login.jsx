@@ -96,7 +96,7 @@ const Login = () => {
         <div className="flex flex-col justify-center px-8 w-full md:w-1/2 min-h-screen">
           <div className="max-w-md w-full mx-auto">
             <h1 className="text-5xl font-extrabold text-[#3d3356] mb-2 leading-tight">
-              hello,
+              Hello,
               <br />
               welcome back
             </h1>

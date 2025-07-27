@@ -32,6 +32,7 @@ const carSchema = new mongoose.Schema(
     },
 
     description: { type: String, required: true },
+    rating: {type: Number, default: 4.5},
 
     owner: {
       type: mongoose.Schema.Types.ObjectId,

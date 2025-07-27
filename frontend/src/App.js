@@ -19,7 +19,7 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="*" element={<NotFound />} />
         <Route path="/peer-owner/dashboard" element={<Dashboard />} />
-      </Routes>s
+      </Routes>
     </Router>
   );
 }
