@@ -115,32 +115,32 @@ function Overview() {
 
           {/* Legend */}
           <div className="mt-4 text-sm space-y-1">
-            <p className="flex items-center gap-2 justify-between">
+            <div className="flex items-center gap-2 justify-between">
               <div>
                 <span className="w-3 h-3 bg-blue-600 rounded-full inline-block" />
                 &nbsp;Total Hired
               </div>
               <span className="text-green-600">54% ↑</span>
-            </p>
-            <p className="flex items-center gap-2 justify-between">
+            </div>
+            <div className="flex items-center gap-2 justify-between">
               <div>
                 <span className="w-3 h-3 bg-green-600 rounded-full inline-block" />
                 &nbsp;Total Canceled
               </div>
               <span className="text-gray-800">20% ↓</span>
-            </p>
-            <p className="flex items-center gap-2 justify-between">
+            </div>
+            <div className="flex items-center gap-2 justify-between">
               <div>
                 <span className="w-3 h-3 bg-red-600 rounded-full inline-block" />
                 &nbsp;Total Pending
               </div>{" "}
               <span className="text-red-600">26% ↓</span>
-            </p>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-xl overflow-x-auto">
+      <div className="rounded-xl overflow-x-auto w-full">
         <Topbar />
         <div className="min-w-[800px] grid grid-cols-6 font-semibold text-gray-700 px-6 py-3 border-b bg-gray-100">
           <div>No.</div>

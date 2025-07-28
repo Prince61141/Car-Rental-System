@@ -130,13 +130,12 @@ const Login = () => {
                   />
                   Remember me
                 </label>
-                <button
-                  type="button"
+                <a
                   className="text-[#3d3356] text-opacity-80 hover:underline text-sm"
-                  onClick={() => alert("Forgot password coming soon!")}
+                  href="/forgot-password"
                 >
                   forgot password?
-                </button>
+                </a>
               </div>
               <div className="flex gap-4 mt-2">
                 <button

@@ -10,11 +10,13 @@ const userSchema = new mongoose.Schema({
     default: "renter",
   },
   password: String,
-   document: {
+  document: {
     Aadhar: { type: String },
     PAN: { type: String },
   },
   verified: { type: Boolean, default: false },
+  resetPasswordToken: String,
+  resetPasswordExpire: Date,
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
