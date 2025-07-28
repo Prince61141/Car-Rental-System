@@ -1,5 +1,5 @@
 import express from "express";
-import { multerInstance, addMyCar, getMyCars, getallCars } from "../controllers/carController.js";
+import { multerInstance, addMyCar, getMyCars, getallCars, getCarById, updateCar ,updateCarAvailability } from "../controllers/carController.js";
 
 const router = express.Router();
 
@@ -14,7 +14,10 @@ router.post(
   addMyCar
 );
 
+router.get("/:id/details", getCarById);
+router.patch("/:id/update", updateCar);
 router.get("/mycars", getMyCars);
 router.get("/allcars", getallCars);
+router.patch("/:id/availability", updateCarAvailability);
 
 export default router;

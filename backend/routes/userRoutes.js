@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const { registerWithPhone, loginUser, verifyPhoneOtp, forgotPassword, resetPassword  } = require("../controllers/userController");
+const { registerWithPhone, loginUser, verifyPhoneOtp, forgotPassword, resetPassword } = require("../controllers/userController");
 const { authenticateToken } = require("../middleware/authMiddleware");
-const { resendOtp } = require("../controllers/userController")
+const { resendOtp, changePassword } = require("../controllers/userController");
 
 // Routes
 router.post("/users/register", registerWithPhone);
@@ -11,6 +11,7 @@ router.post("/users/login", loginUser);
 router.post("/users/resend-otp", resendOtp);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:token", resetPassword);
+router.put("/users/change-password", changePassword);
 
 router.get("/admin/dashboard", authenticateToken, (req, res) => {
   if (req.user.role !== "admin") {

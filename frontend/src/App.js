@@ -9,6 +9,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
 import Dashboard from "./components/Owner_Dashboard/Dashbaord";
+import EditCar from "./components/Owner_Dashboard/EditCar";
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="*" element={<NotFound />} />
         <Route path="/peer-owner/dashboard" element={<Dashboard />} />
+        <Route path="/edit-car/:id" element={<EditCar />} />
       </Routes>
     </Router>
   );

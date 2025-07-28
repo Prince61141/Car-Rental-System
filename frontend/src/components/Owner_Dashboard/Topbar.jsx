@@ -7,6 +7,7 @@ function Topbar() {
   const [cars, setCars] = useState([]);
   const [showListCar, setShowListCar] = useState(false);
   const [ownerName, setOwnerName] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCars = async () => {
@@ -32,6 +33,7 @@ function Topbar() {
         console.error(err);
         alert("Error fetching cars");
       }
+      setLoading(false);
     };
     fetchCars();
 
@@ -42,28 +44,44 @@ function Topbar() {
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow flex flex-col md:flex-row md:items-center md:justify-between p-6 mb-6 shadow-md ml-3 mr-3">
-        <div>
-          <h1 className="text-2xl font-bold mb-1">Welcome, {ownerName}!</h1>
-          <p className="text-base text-gray-700">
-            Keep up the great work! Your cars are helping&nbsp; people travel
-          </p>
+      {loading ? (
+        <div className="bg-white rounded-xl shadow flex flex-col md:flex-row md:items-center md:justify-between p-6 mb-6 shadow-md ml-3 mr-3 animate-pulse">
+          <div>
+            <div className="h-8 w-48 bg-gray-200 rounded mb-3"></div>
+            <div className="h-5 w-64 bg-gray-100 rounded"></div>
+          </div>
+          <div className="flex flex-col md:items-end gap-2 mt-4 md:mt-0">
+            <div className="h-10 w-40 bg-gray-200 rounded mb-2"></div>
+            <div className="h-5 w-32 bg-gray-100 rounded"></div>
+          </div>
         </div>
-        <div className="flex flex-col md:items-end gap-2 mt-4 md:mt-0">
-          <button
-            className="flex items-center gap-2 bg-[#2f1c53] hover:bg-[#3d3356] text-white font-medium text-sm px-3 py-2 rounded-lg shadow transition"
-            onClick={() => setShowListCar(true)}
-          >
-            <MdAdd size={20} />
-            List A new Car
-          </button>
-          <span className="flex items-center gap-2 text-gray-800 text-sm mt-1 md:mt-0">
-            <MdDirectionsCar size={20} />
-            {cars.length} Active Listing
-          </span>
+      ) : (
+        <div className="bg-white rounded-xl shadow flex flex-col md:flex-row md:items-center md:justify-between p-6 mb-6 shadow-md ml-3 mr-3">
+          <div>
+            <h1 className="text-2xl font-bold mb-1">
+              Welcome, {ownerName}!
+            </h1>
+            <p className="text-base text-gray-700">
+              Keep up the great work! Your cars are helping&nbsp; people travel
+            </p>
+          </div>
+          <div className="flex flex-col md:items-end gap-2 mt-4 md:mt-0">
+            <button
+              className="flex items-center gap-2 bg-[#2f1c53] hover:bg-[#3d3356] text-white font-medium text-sm px-3 py-2 rounded-lg shadow transition"
+              onClick={() => setShowListCar(true)}
+              disabled={loading}
+            >
+              <MdAdd size={20} />
+              List A new Car
+            </button>
+            <span className="flex items-center gap-2 text-gray-800 text-sm mt-1 md:mt-0">
+              <MdDirectionsCar size={20} />
+              {`${cars.length} Active Listing`}
+            </span>
+          </div>
         </div>
-      </div>
-      {showListCar && (
+      )}
+      {showListCar && !loading && (
         <ListCar
           onCarAdded={(car) => setCars((prev) => [...prev, car])}
           onClose={() => setShowListCar(false)}

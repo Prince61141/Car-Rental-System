@@ -132,3 +132,65 @@ export const getallCars = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 }
+
+export const getCarById = async (req, res) => {
+  try {
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ success: false, message: "Car not found" });
+    res.json({ success: true, car });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const updateCar = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const ownerId = decoded.id;
+
+    const carId = req.params.id;
+    const car = await Car.findOne({ _id: carId, owner: ownerId });
+    if (!car) return res.status(404).json({ success: false, message: "Car not found" });
+
+    // Only update allowed fields
+    const fields = [
+      "brand", "model", "carnumber", "year", "pricePerDay",
+      "fuelType", "transmission", "seats", "description"
+    ];
+    fields.forEach(field => {
+      if (req.body[field] !== undefined) car[field] = req.body[field];
+    });
+
+    await car.save();
+    res.json({ success: true, car });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to update car" });
+  }
+};
+
+export const updateCarAvailability = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const ownerId = decoded.id;
+
+    const carId = req.params.id;
+    const { available } = req.body;
+
+    // Only the owner can update their car
+    const car = await Car.findOne({ _id: carId, owner: ownerId });
+    if (!car) return res.status(404).json({ success: false, message: "Car not found" });
+
+    car.availability = available;
+    await car.save();
+
+    res.json({ success: true, car });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to update availability" });
+  }
+};

@@ -6,6 +6,7 @@ import Cars from "./Cars";
 import Settings from "./Settings";
 import Booking from "./Booking";
 import { fetchOwner } from "../../services/owner";
+import Chatbot from "../Chatbot";
 
 function Dashboard() {
   const [verified, setVerified] = useState(false);
@@ -68,6 +69,7 @@ function Dashboard() {
             {activeSection === "Bookings" && <Booking />}
             {activeSection === "Settings" && <Settings />}
             {/* Add more sections as needed */}
+            <Chatbot />
           </>
         )}
       </main>
