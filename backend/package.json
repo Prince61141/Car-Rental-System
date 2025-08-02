@@ -1,4 +1,6 @@
 {
+  "type": "module",
+  "name": "car-rental-system-backend",
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.7.0",

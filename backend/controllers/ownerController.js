@@ -3,6 +3,8 @@ import Document from "../models/Document.js";
 import jwt from "jsonwebtoken";
 import sendEmail from "../utils/sendEmail.js";
 import { generateAndSendOtp, verifyOtp } from "../utils/sendOtp.js";
+import cloudinary from "../utils/cloudinary.js";
+import multer from "multer";
 
 export const getMe = async (req, res) => {
   try {
@@ -19,6 +21,8 @@ export const getMe = async (req, res) => {
       name: user.name,
       email: user.email,
       phone: user.phone,
+      address: user.address,
+      photo: user.photo,
       role: user.role,
       verified: user.verified,
       document: user.document,
@@ -120,6 +124,12 @@ export const verifyOwner = async (req, res) => {
   }
 };
 
+const storage = multer.memoryStorage();
+export const multerInstance = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
 export const updateMe = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
@@ -128,7 +138,16 @@ export const updateMe = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded.id;
 
-    const { name, phone, address, aadhar, pan } = req.body;
+    let name, phone, address, aadhar, pan, photoUrl;
+    if (req.is("multipart/form-data")) {
+      name = req.body.name;
+      phone = req.body.phone;
+      address = req.body.address;
+      aadhar = req.body.aadhar;
+      pan = req.body.pan;
+    } else {
+      ({ name, phone, address, aadhar, pan } = req.body);
+    }
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -138,20 +157,40 @@ export const updateMe = async (req, res) => {
     if (address) user.address = address;
     if (aadhar && pan) user.document = { Aadhar: aadhar, PAN: pan };
 
+    if (req.file) {
+      const result = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "owners/profile_photos", public_id: userId },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        stream.end(req.file.buffer);
+      });
+      user.photo = result.secure_url;
+      photoUrl = result.secure_url;
+    }
+
     await user.save();
 
-    res.json({ success: true, message: "Profile updated", user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      address: user.address,
-      aadhar,
-      pan,
-      role: user.role,
-      verified: user.verified,
-      document: user.document,
-    }});
+    res.json({
+      success: true,
+      message: "Profile updated",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        address: user.address,
+        aadhar,
+        pan,
+        role: user.role,
+        verified: user.verified,
+        document: user.document,
+        photo: user.photo || photoUrl || "",
+      },
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
   }

@@ -136,7 +136,9 @@ function Settings() {
 
   const maskValue = (value, visible = 4) => {
     if (!value) return "";
-    return "*".repeat(Math.max(0, value.length - visible)) + value.slice(-visible);
+    return (
+      "*".repeat(Math.max(0, value.length - visible)) + value.slice(-visible)
+    );
   };
 
   const handlePasswordChange = (e) => {
@@ -190,7 +192,7 @@ function Settings() {
   return (
     <div className="ml-3 mr-3 bg-white rounded-xl shadow p-8">
       <h2 className="text-2xl font-bold mb-6 text-[#2f1c53]">Owner Profile</h2>
-      
+
       {/* Profile Photo */}
       <div className="flex flex-col items-center mb-6">
         <div className="relative">
@@ -285,7 +287,11 @@ function Settings() {
           />
         </div>
         {msg && (
-          <div className={msg.includes("success") ? "text-green-600" : "text-red-600"}>
+          <div
+            className={
+              msg.includes("success") ? "text-green-600" : "text-red-600"
+            }
+          >
             {msg}
           </div>
         )}
@@ -293,7 +299,9 @@ function Settings() {
 
       {/* Password Section */}
       <div className="mt-10 border-t pt-8">
-        <h3 className="text-xl font-bold mb-4 text-[#2f1c53]">Change Password</h3>
+        <h3 className="text-xl font-bold mb-4 text-[#2f1c53]">
+          Change Password
+        </h3>
         <form onSubmit={handlePasswordSubmit} className="space-y-4">
           <div>
             <label className="block text-gray-700 mb-1">Current Password</label>
@@ -318,7 +326,9 @@ function Settings() {
             />
           </div>
           <div>
-            <label className="block text-gray-700 mb-1">Confirm New Password</label>
+            <label className="block text-gray-700 mb-1">
+              Confirm New Password
+            </label>
             <input
               type={showPassword ? "text" : "password"}
               name="confirmPassword"
@@ -340,7 +350,11 @@ function Settings() {
             </label>
           </div>
           {passMsg && (
-            <div className={passMsg.includes("success") ? "text-green-600" : "text-red-600"}>
+            <div
+              className={
+                passMsg.includes("success") ? "text-green-600" : "text-red-600"
+              }
+            >
               {passMsg}
             </div>
           )}

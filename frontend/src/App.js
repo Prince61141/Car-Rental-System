@@ -8,7 +8,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
-import Dashboard from "./components/Owner_Dashboard/Dashbaord";
+import Owner_Dashboard from "./pages/Owner_Dashboard";
+import Renter_Dashboard from "./pages/Renter_Dashboard";
 import EditCar from "./components/Owner_Dashboard/EditCar";
 
 function App() {
@@ -23,7 +24,8 @@ function App() {
         <Route path="/contact-us" element={<Contact />} />
         <Route path="/about" element={<About />} />
         <Route path="*" element={<NotFound />} />
-        <Route path="/peer-owner/dashboard" element={<Dashboard />} />
+        <Route path="/peer-owner/dashboard" element={<Owner_Dashboard />} />
+        <Route path="/renter/dashboard" element={<Renter_Dashboard />} />
         <Route path="/edit-car/:id" element={<EditCar />} />
       </Routes>
     </Router>

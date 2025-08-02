@@ -77,7 +77,7 @@ function HomePage() {
           key={car._id}
           car={{
             image: car.image?.[0] || "https://via.placeholder.com/300x150?text=No+Image",
-            name: car.title || car.model,
+            name: car.model,
             rating: car.rating || 4.7,
             price: car.pricePerDay,
             tags: [car.category, car.transmission, car.fuelType].filter(Boolean),

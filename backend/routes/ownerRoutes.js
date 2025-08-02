@@ -1,11 +1,10 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-
-const { getMe, lookupDocument, verifyOwner, updateMe } = require("../controllers/ownerController");
+import {getMe, lookupDocument, verifyOwner, multerInstance, updateMe} from "../controllers/ownerController.js";
 
 router.get("/me", getMe);
 router.post("/lookup-document", lookupDocument);
 router.post("/verify-owner", verifyOwner);
-router.put("/update", updateMe);
+router.put("/update", multerInstance.single("photo"), updateMe);
 
-module.exports = router;
+export default router;

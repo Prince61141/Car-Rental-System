@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
   name: String,
@@ -10,9 +10,16 @@ const userSchema = new mongoose.Schema({
     default: "renter",
   },
   password: String,
+  address: String,
+  Citizenship: { type: String, default: "Indian" },
+  photo: String,
   document: {
-    Aadhar: { type: String },
-    PAN: { type: String },
+    Aadhar: { type: String, unique: true },
+    PAN: { type: String, unique: true },
+    Driving_License: { type: String, unique: true },
+    Passport: { type: String, unique: true },
+    Passport_URL: { type: String },
+    Driving_License_URL: { type: String },
   },
   verified: { type: Boolean, default: false },
   resetPasswordToken: String,
@@ -26,4 +33,5 @@ userSchema.pre("save", function (next) {
   next();
 });
 
-module.exports = mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema);
+export default User;

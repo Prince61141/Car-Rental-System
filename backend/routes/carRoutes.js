@@ -1,7 +1,6 @@
 import express from "express";
-import { multerInstance, addMyCar, getMyCars, getallCars, getCarById, updateCar ,updateCarAvailability } from "../controllers/carController.js";
-
 const router = express.Router();
+import { multerInstance, addMyCar, getMyCars, getallCars, getCarById, updateCar ,updateCarAvailability } from "../controllers/carController.js";
 
 router.post(
   "/addcar",

@@ -105,7 +105,7 @@ const Login = () => {
             </p>
             <form onSubmit={handleLogin} className="space-y-5">
               <input
-                type="email"
+                type="text"
                 placeholder="Enter Your Email"
                 className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-purple-400"
                 value={email}

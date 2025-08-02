@@ -1,8 +1,7 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const { registerWithPhone, loginUser, verifyPhoneOtp, forgotPassword, resetPassword } = require("../controllers/userController");
-const { authenticateToken } = require("../middleware/authMiddleware");
-const { resendOtp, changePassword } = require("../controllers/userController");
+import authenticateToken from "../middleware/authMiddleware.js";
+import { registerWithPhone, loginUser, verifyPhoneOtp, forgotPassword, resetPassword, resendOtp, changePassword } from "../controllers/userController.js";
 
 // Routes
 router.post("/users/register", registerWithPhone);
@@ -41,4 +40,4 @@ router.get("/fleet/dashboard", authenticateToken, (req, res) => {
   res.json({ success: true, user: req.user });
 });
 
-module.exports = router;
+export default router;

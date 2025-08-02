@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const DocumentSchema = new mongoose.Schema({
   aadhar: { type: String, required: true },
@@ -6,4 +6,5 @@ const DocumentSchema = new mongoose.Schema({
   name: String,
 });
 
-module.exports = mongoose.model("Document", DocumentSchema);
+const Document = mongoose.model("Document", DocumentSchema);
+export default Document;

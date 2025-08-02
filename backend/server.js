@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import userRoutes from "./routes/userRoutes.js";
 import carRoutes from "./routes/carRoutes.js";
 import ownerRoutes from "./routes/ownerRoutes.js";
+import renterRoutes from "./routes/renterRoutes.js";
 
 dotenv.config();
 connectDB();
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use("/api/", userRoutes);
 app.use("/api/cars", carRoutes);
 app.use("/api/owners", ownerRoutes);
+app.use("/api/renters", renterRoutes);
 
 app.get("/", (req, res) => {
   res.send("🚗 Car Rental API is running...");

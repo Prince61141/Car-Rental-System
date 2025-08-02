@@ -1,13 +1,16 @@
 import { MdAdd, MdDirectionsCar } from "react-icons/md";
 import { useState, useEffect } from "react";
 import ListCar from "./ListCar";
-import { fetchOwner } from "../../services/owner";
 
 function Topbar() {
   const [cars, setCars] = useState([]);
   const [showListCar, setShowListCar] = useState(false);
   const [ownerName, setOwnerName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState({
+    name: "",
+  });
+  const [photoPreview, setPhotoPreview] = useState("");
 
   useEffect(() => {
     const fetchCars = async () => {
@@ -36,10 +39,32 @@ function Topbar() {
       setLoading(false);
     };
     fetchCars();
+  }, []);
 
-    fetchOwner().then((ownerName) => {
-      if (ownerName) setOwnerName(ownerName);
-    });
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Token not found. Please login again.");
+        return;
+      }
+      try {
+        const res = await fetch("http://localhost:5000/api/owners/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        // If your API returns { success: true, user: { ... } }
+        const user = data.user || data; // fallback if already flat
+        setProfile({
+          name: user.name || "",
+          photo: user.photo || "",
+        });
+        setPhotoPreview(user.photo || "");
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      }
+    };
+    fetchProfile();
   }, []);
 
   return (
@@ -58,9 +83,7 @@ function Topbar() {
       ) : (
         <div className="bg-white rounded-xl shadow flex flex-col md:flex-row md:items-center md:justify-between p-6 mb-6 shadow-md ml-3 mr-3">
           <div>
-            <h1 className="text-2xl font-bold mb-1">
-              Welcome, {ownerName}!
-            </h1>
+            <h1 className="text-2xl font-bold mb-1">Welcome, {profile.name}!</h1>
             <p className="text-base text-gray-700">
               Keep up the great work! Your cars are helping&nbsp; people travel
             </p>
