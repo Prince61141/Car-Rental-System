@@ -1,0 +1,6 @@
+{
+  "Ahmedabad": ["Navrangpura", "Satellite", "Maninagar", "Bopal", "Vastrapur"],
+  "Mumbai": ["Andheri", "Bandra", "Borivali", "Dadar", "Juhu"],
+  "Bengaluru": ["Whitefield", "Koramangala", "Indiranagar", "Jayanagar", "HSR Layout"],
+  "Delhi": ["Dwarka", "Rohini", "Saket", "Karol Bagh", "Lajpat Nagar"]
+}

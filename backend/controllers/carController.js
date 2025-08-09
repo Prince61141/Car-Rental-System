@@ -89,9 +89,11 @@ export const addMyCar = async (req, res) => {
       location: {
         city: parsedLocation.city,
         state: parsedLocation.state,
+        area: parsedLocation.area,
         country: parsedLocation.country || "India",
         addressLine: parsedLocation.addressLine || "",
         pincode: parsedLocation.pincode || "",
+        digipin: parsedLocation.digipin || "",
       },
       availability,
       image: imageUrls,
@@ -155,7 +157,7 @@ export const updateCar = async (req, res) => {
     const car = await Car.findOne({ _id: carId, owner: ownerId });
     if (!car) return res.status(404).json({ success: false, message: "Car not found" });
 
-    // Only update allowed fields
+    // Update allowed fields
     const fields = [
       "brand", "model", "carnumber", "year", "pricePerDay",
       "fuelType", "transmission", "seats", "description"
@@ -163,6 +165,19 @@ export const updateCar = async (req, res) => {
     fields.forEach(field => {
       if (req.body[field] !== undefined) car[field] = req.body[field];
     });
+
+    // Update location if provided
+    if (req.body.location) {
+      const loc = typeof req.body.location === "string"
+        ? JSON.parse(req.body.location)
+        : req.body.location;
+      car.location = {
+        ...car.location,
+        ...loc,
+      };
+    }
+
+    // Optionally: handle image/documents update here if you want
 
     await car.save();
     res.json({ success: true, car });

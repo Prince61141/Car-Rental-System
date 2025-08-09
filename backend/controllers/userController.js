@@ -81,7 +81,7 @@ const resendOtp = async (req, res) => {
 };
 
 const loginUser = async (req, res) => {
-  const { identifier, password } = req.body;
+  const { identifier, password, remember } = req.body;
 
   try {
     const user = await User.findOne({
@@ -98,10 +98,11 @@ const loginUser = async (req, res) => {
         .status(401)
         .json({ success: false, message: "Invalid password" });
 
+    const expiresIn = remember ? "15d" : "2d";
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn }
     );
 
     res.status(200).json({

@@ -41,14 +41,17 @@ function Cars() {
   const handleMaintenance = async (carId) => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://localhost:5000/api/cars/${carId}/availability`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ available: false }),
-      });
+      const res = await fetch(
+        `http://localhost:5000/api/cars/${carId}/availability`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ available: false }),
+        }
+      );
       const data = await res.json();
       if (res.ok && data.success) {
         setCars((prev) =>
@@ -68,14 +71,17 @@ function Cars() {
   const handleListCar = async (carId) => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://localhost:5000/api/cars/${carId}/availability`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ available: true }),
-      });
+      const res = await fetch(
+        `http://localhost:5000/api/cars/${carId}/availability`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ available: true }),
+        }
+      );
       const data = await res.json();
       if (res.ok && data.success) {
         setCars((prev) =>
@@ -163,29 +169,34 @@ function Cars() {
                   </div>
                 </div>
 
-                <a className="flex items-center gap-1 border border-[#2f1c53] text-white bg-[#2f2240] px-3 py-2 rounded-lg font-medium ml-4" href={`/edit-car/${car._id}`}>
-                  <MdEdit className="text-lg" />
-                  Edit
-                </a>
+                <div className="flex items-center flex-col gap-2 lg:flex-row">
+                  <a
+                    className="flex items-center gap-1 border border-[#2f1c53] text-white bg-[#2f2240] px-3 py-2 rounded-lg font-medium ml-4"
+                    href={`/edit-car/${car._id}`}
+                  >
+                    <MdEdit className="text-lg" />
+                    Edit
+                  </a>
 
-                {/* Status Button */}
-                {car.availability !== false ? (
-                  <button
-                    className="flex items-center gap-1 border border-[#2f1c53] text-[#2f1c53] bg-[#f7f6f2] px-4 py-2 rounded-lg font-medium ml-4"
-                    onClick={() => handleMaintenance(car._id)}
-                  >
-                    <MdWarningAmber className="text-lg" />
-                    Maintenance
-                  </button>
-                ) : (
-                  <button
-                    className="flex items-center gap-1 border border-[#2f1c53] text-[#2f1c53] bg-[#e6fbe6] px-4 py-2 rounded-lg font-medium ml-4"
-                    onClick={() => handleListCar(car._id)}
-                  >
-                    <MdAdd className="text-lg" />
-                    Put On Rent 
-                  </button>
-                )}
+                  {/* Status Button */}
+                  {car.availability !== false ? (
+                    <button
+                      className="flex items-center gap-1 border border-[#2f1c53] text-[#2f1c53] bg-[#f7f6f2] px-4 py-2 rounded-lg font-medium ml-4"
+                      onClick={() => handleMaintenance(car._id)}
+                    >
+                      <MdWarningAmber className="text-lg" />
+                      Maintenance
+                    </button>
+                  ) : (
+                    <button
+                      className="flex items-center gap-1 border border-[#2f1c53] text-[#2f1c53] bg-[#e6fbe6] px-4 py-2 rounded-lg font-medium ml-4"
+                      onClick={() => handleListCar(car._id)}
+                    >
+                      <MdAdd className="text-lg" />
+                      Put On Rent
+                    </button>
+                  )}
+                </div>
               </div>
             ))
           )}

@@ -15,10 +15,12 @@ const carSchema = new mongoose.Schema(
 
     location: {
       city: { type: String, required: true },
+      area: { type: String, required: true },
       state: { type: String, required: true },
       country: { type: String, default: "India" },
       addressLine: { type: String },
       pincode: { type: String },
+      digipin: {type: String},
     },
 
     availability: { type: Boolean, default: true },

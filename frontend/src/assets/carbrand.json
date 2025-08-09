@@ -1,0 +1,87 @@
+{
+  "Maruti Suzuki": [
+    "Alto K10",
+    "S‑Presso",
+    "Celerio",
+    "Wagon R",
+    "Swift",
+    "Ignis",
+    "Baleno",
+    "Dzire",
+    "Fronx",
+    "Brezza",
+    "Ertiga",
+    "XL6",
+    "Grand Vitara",
+    "Invicto",
+    "Eeco"
+  ],
+  "Hyundai": [
+    "Grand i10 Nios",
+    "i20",
+    "i20 N Line",
+    "Aura",
+    "Verna",
+    "Exter",
+    "Venue",
+    "Venue N Line",
+    "Creta",
+    "Creta N Line",
+    "Alcazar",
+    "Tucson",
+    "Creta Electric",
+    "Ioniq 5"
+  ],
+  "Tata Motors": [
+    "Tiago",
+    "Altroz",
+    "Tigor",
+    "Punch",
+    "Nexon",
+    "Curvv",
+    "Harrier",
+    "Safari",
+    "Tiago.ev",
+    "Tigor.ev",
+    "Punch.ev",
+    "Nexon.ev",
+    "Curvv.ev",
+    "Harrier.ev"
+  ],
+  "Mahindra & Mahindra": [
+    "XUV700",
+    "BE 6",
+    "XEV 9e"
+  ],
+  "Renault": [
+    "Kwid",
+    "Triber",
+    "Kiger"
+  ],
+  "MG Motor": [
+    "Hector",
+    "Hector Plus",
+    "Astor",
+    "ZS EV",
+    "Gloster",
+    "Cyberster"
+  ],
+  "Kia": [
+    "Seltos",
+    "Sonet",
+    "Carens",
+    "Carnival",
+    "Syros"
+  ],
+  "Toyota": [
+    "Innova Hycross",
+    "Fortuner",
+    "Fortuner Legender",
+    "Camry",
+    "U​rban Cruiser Hyryder"
+  ],
+  "VinFast": [
+    "VF7",
+    "VF6"
+  ]
+}

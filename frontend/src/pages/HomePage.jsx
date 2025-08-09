@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { FaCarSide } from "react-icons/fa";
+import { MdOutlineElectricCar } from "react-icons/md";
+import { MdFamilyRestroom } from "react-icons/md";
+import { MdOutlineWorkspacePremium } from "react-icons/md";
 
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -10,7 +14,7 @@ import Chatbot from "../components/Chatbot";
 import Testimonial from "../components/Homepage/Testimonal";
 
 function HomePage() {
-  const [selectedTab, setSelectedTab] = useState("Popular");
+  const [selectedTab, setSelectedTab] = useState("All");
   const [cars, setCars] = useState([]);
 
   useEffect(() => {
@@ -28,14 +32,22 @@ function HomePage() {
     fetchCars();
   }, []);
 
-  const carCategories = ["Popular", "Large Car", "Small Car", "Executive Car"];
+  const carCategories = [
+    { label: "ALL", value: "All", icon: <FaCarSide size={22} /> },
+    {
+      label: "Premium",
+      value: "Premium",
+      icon: <MdOutlineWorkspacePremium size={22} />,
+    },
+    { label: "Family", value: "Family", icon: <MdFamilyRestroom size={22} /> },
+    { label: "EV", value: "EV", icon: <MdOutlineElectricCar size={22} /> },
+  ];
 
   return (
     <div style={{ webkitscrollbar: "none" }}>
       <Header scrollEffect={true} />
 
       <Hero />
-
       <SearchBar />
 
       <Features />
@@ -53,38 +65,51 @@ function HomePage() {
             </p>
           </div>
 
-          <div className="flex justify-center mb-8">
-            <div className="flex bg-gray-100 rounded-lg p-1">
-              {carCategories.map((category) => (
+          {/* Category Tabs */}
+          <div className="flex justify-center mb-6 px-1">
+            <div className="flex overflow-x-auto gap-3 sm:gap-5 no-scrollbar">
+              {carCategories.map((cat) => (
                 <button
-                  key={category}
-                  onClick={() => setSelectedTab(category)}
-                  className={`px-6 py-3 rounded-md font-medium transition-colors ${
-                    selectedTab === category
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
+                  key={cat.value}
+                  onClick={() => setSelectedTab(cat.value)}
+                  className={`flex items-center gap-1 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2 rounded-full border-2 font-medium transition-all duration-150 text-sm sm:text-base whitespace-nowrap
+          ${selectedTab === cat.value
+                      ? "bg-[#2F2240] text-white border-[#2F2240] shadow"
+                      : "bg-white text-[#2F2240] border-[#2F2240] hover:bg-[#f6f3fa]"
+                    }
+        `}
                 >
-                  {category}
+                  <span className="text-lg sm:text-xl">{cat.icon}</span>
+                  <span className="font-semibold sm:text-xl">{cat.label}</span>
                 </button>
               ))}
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {cars.map((car) => (
-        <CarCard
-          key={car._id}
-          car={{
-            image: car.image?.[0] || "https://via.placeholder.com/300x150?text=No+Image",
-            name: car.model,
-            rating: car.rating || 4.7,
-            price: car.pricePerDay,
-            tags: [car.category, car.transmission, car.fuelType].filter(Boolean),
-          }}
-          onRent={() => alert(`Renting ${car.title || car.model}`)}
-        />
-      ))}
+            {cars
+              .filter(
+                (car) =>
+                  selectedTab === "All" ||
+                  car.category?.toLowerCase() === selectedTab.toLowerCase()
+              )
+              .map((car) => (
+                <CarCard
+                  key={car._id}
+                  car={{
+                    image:
+                      car.image?.[0] ||
+                      "https://via.placeholder.com/300x150?text=No+Image",
+                    name: car.model,
+                    rating: car.rating || 4.7,
+                    price: car.pricePerDay,
+                    tags: [car.category, car.transmission, car.fuelType].filter(
+                      Boolean
+                    ),
+                  }}
+                  onRent={() => alert(`Renting ${car.title || car.model}`)}
+                />
+              ))}
           </div>
 
           <div className="text-center mt-12">

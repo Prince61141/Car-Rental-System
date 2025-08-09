@@ -59,6 +59,7 @@ const Login = () => {
         body: JSON.stringify({
           identifier: email,
           password,
+          remember,
         }),
       });
       const data = await res.json();
@@ -94,7 +95,7 @@ const Login = () => {
       <div className="flex md:flex-row bg-white">
         {/* Left: Login Form */}
         <div className="flex flex-col justify-center px-8 w-full md:w-1/2 min-h-screen">
-          <div className="max-w-md w-full mx-auto">
+          <div className="max-w-md w-full mx-auto text-selection-disabled">
             <h1 className="text-5xl font-extrabold text-[#3d3356] mb-2 leading-tight">
               Hello,
               <br />
@@ -121,7 +122,7 @@ const Login = () => {
                 required
               />
               <div className="flex items-center justify-between">
-                <label className="flex items-center text-[#3d3356] text-opacity-80 text-sm">
+                <label className="flex items-center text-[#3d3356] text-opacity-80 text-sm text-selection-disabled">
                   <input
                     type="checkbox"
                     checked={remember}
@@ -152,6 +153,7 @@ const Login = () => {
                 >
                   continue with google
                 </button>
+                
               </div>
               {message && (
                 <div className="text-red-600 text-sm text-center mt-2">
