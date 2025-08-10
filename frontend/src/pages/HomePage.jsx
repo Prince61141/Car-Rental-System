@@ -73,10 +73,11 @@ function HomePage() {
                   key={cat.value}
                   onClick={() => setSelectedTab(cat.value)}
                   className={`flex items-center gap-1 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2 rounded-full border-2 font-medium transition-all duration-150 text-sm sm:text-base whitespace-nowrap
-          ${selectedTab === cat.value
-                      ? "bg-[#2F2240] text-white border-[#2F2240] shadow"
-                      : "bg-white text-[#2F2240] border-[#2F2240] hover:bg-[#f6f3fa]"
-                    }
+          ${
+            selectedTab === cat.value
+              ? "bg-[#2F2240] text-white border-[#2F2240] shadow"
+              : "bg-white text-[#2F2240] border-[#2F2240] hover:bg-[#f6f3fa]"
+          }
         `}
                 >
                   <span className="text-lg sm:text-xl">{cat.icon}</span>
@@ -97,6 +98,7 @@ function HomePage() {
                 <CarCard
                   key={car._id}
                   car={{
+                    ...car,
                     image:
                       car.image?.[0] ||
                       "https://via.placeholder.com/300x150?text=No+Image",
@@ -107,7 +109,6 @@ function HomePage() {
                       Boolean
                     ),
                   }}
-                  onRent={() => alert(`Renting ${car.title || car.model}`)}
                 />
               ))}
           </div>

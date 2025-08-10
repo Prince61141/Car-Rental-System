@@ -11,6 +11,8 @@ import About from "./pages/About";
 import Owner_Dashboard from "./pages/Owner_Dashboard";
 import Renter_Dashboard from "./pages/Renter_Dashboard";
 import EditCar from "./components/Owner_Dashboard/EditCar";
+import RentCarPage from "./pages/RentCarPage";
+import CarsPage from "./pages/CarsPage";
 
 function App() {
   return (
@@ -27,6 +29,8 @@ function App() {
         <Route path="/peer-owner/dashboard" element={<Owner_Dashboard />} />
         <Route path="/renter/dashboard" element={<Renter_Dashboard />} />
         <Route path="/edit-car/:id" element={<EditCar />} />
+        <Route path="/rent/:id" element={<RentCarPage />} />
+        <Route path="/cars" element={<CarsPage />} />
       </Routes>
     </Router>
   );

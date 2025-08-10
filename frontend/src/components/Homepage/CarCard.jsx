@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-function CarCard({ car, onRent }) {
+function CarCard({ car }) {
   const [liked, setLiked] = useState(false);
-  
+  const navigate = useNavigate();
+
+  const handleRent = (e) => {
+    e.preventDefault();
+    navigate(`/rent/${car._id}`);
+  };
+
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-3 shadow-sm hover:shadow-xl transition-shadow duration-300 group relative">
       {/* Favorite Heart */}
@@ -57,7 +64,6 @@ function CarCard({ car, onRent }) {
             {tag}
           </span>
         ))}
-        {/* Example fallback tags */}
         {!car.tags && (
           <>
             <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">Manual</span>
@@ -69,13 +75,13 @@ function CarCard({ car, onRent }) {
       <div className="flex items-end justify-between mt-2">
         <div>
           <span className="text-xl font-bold text-gray-900">
-            ₹{car.price || 12}
+            ₹{car.price}
           </span>
           <span className="text-gray-500 ml-1 text-xs">/Day</span>
         </div>
         <button
           className="bg-[#2A1A3B] hover:bg-[#1c1128] text-white px-5 py-2 rounded-lg shadow transition-all duration-200 text-sm font-semibold"
-          onClick={onRent}
+          onClick={handleRent}
         >
           Rent Now
         </button>

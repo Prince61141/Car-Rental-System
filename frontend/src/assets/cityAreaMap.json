@@ -1,6 +1,59 @@
 {
-  "Ahmedabad": ["Navrangpura", "Satellite", "Maninagar", "Bopal", "Vastrapur"],
-  "Mumbai": ["Andheri", "Bandra", "Borivali", "Dadar", "Juhu"],
-  "Bengaluru": ["Whitefield", "Koramangala", "Indiranagar", "Jayanagar", "HSR Layout"],
-  "Delhi": ["Dwarka", "Rohini", "Saket", "Karol Bagh", "Lajpat Nagar"]
+  "Mumbai": [
+    "Andheri", "Bandra", "Borivali", "Dadar", "Juhu", "Colaba", "Malabar Hill", "Worli", "Kurla", "Vikhroli",
+    "Lower Parel", "Versova", "Goregaon", "Andheri West", "Andheri East", "Mazgaon", "Parel", "Kandivali", "Jogeshwari"
+  ],
+  "Delhi": [
+    "Dwarka", "Rohini", "Saket", "Karol Bagh", "Lajpat Nagar", "Connaught Place", "Vasant Kunj", "Pitampura", 
+    "Janakpuri", "Shahdara", "Chandni Chowk", "Ishwar Nagar", "Civil Lines", "Lodhi Colony", "Nizamuddin", "Gurgaon", "Noida"
+  ],
+  "Bengaluru": [
+    "Whitefield", "Koramangala", "Indiranagar", "Jayanagar", "HSR Layout", "MG Road", "Malleshwaram", "Sadashivanagar",
+    "Hebbal", "Yelahanka", "Electronic City", "Sarjapur Road", "Banashankari", "Banaswadi", "Hennur", "Vasanth Nagar", 
+    "Shivajinagar", "Jayanagar"
+  ],
+  "Ahmedabad": [
+    "Navrangpura", "Satellite", "Maninagar", "Bopal", "Vastrapur", "CG Road", "Ellis Bridge", "Shahibaug",
+    "Thaltej", "Sarkhej", "Rakhial", "Naranpura", "Ghodasar", "Bapunagar", "Jivraj Park", "Ashram Road"
+  ],
+  "Chennai": [
+    "T Nagar", "Adyar", "Anna Nagar", "Velachery", "Mylapore", "Besant Nagar", "Royapettah", "Nungambakkam",
+    "Choolaimedu", "Perungudi", "Alwarpet", "Kotturpuram", "Egmore", "Kanchipuram", "Vellore", "Porur", "Kodambakkam"
+  ],
+  "Kolkata": [
+    "Salt Lake", "Dumdum", "Tollygunge", "Park Street", "Howrah", "Sealdah", "Behala", "Kalighat", "Garia",
+    "Jadavpur", "Ballygunge", "South City", "Rashbehari", "Budge Budge", "Shyambazar", "New Market", "Moulali"
+  ],
+  "Hyderabad": [
+    "Banjara Hills", "Jubilee Hills", "Madhapur", "Hi-Tech City", "Gachibowli", "Ameerpet", "Kukatpally", 
+    "Secunderabad", "Old City", "Saidabad", "LB Nagar", "Abids", "Nampally", "Lingampally", "Yousufguda"
+  ],
+  "Pune": [
+    "Koregaon Park", "Kalyani Nagar", "Baner", "Viman Nagar", "Hinjewadi", "Aundh", "Wakad", "Pimple Saudagar", 
+    "Sadashiv Peth", "Shivaji Nagar", "Kothrud", "Vishrantwadi", "Hadapsar", "Bavdhan", "Sinhagad Road"
+  ],
+  "Jaipur": [
+    "C-Scheme", "Malviya Nagar", "Vaishali Nagar", "Bapu Nagar", "Adarsh Nagar", "Mansarovar", "Govind Nagar", 
+    "JLN Marg", "Sanganer", "Shyam Nagar", "Pratap Nagar", "Raja Park", "Ajmer Road", "Bani Park", "Shiv Vihar"
+  ],
+  "Surat": [
+    "Vesu", "Adajan", "Ghod Dod Road", "Varachha", "Ring Road", "Mithakhali", "Katargam", "Athwa", "Limbayat", 
+    "Pandesara", "Sarthana", "Udhna", "Rander", "Gopipura", "Salabatpura", "Surat City Centre"
+  ],
+  "Kochi": [
+    "Fort Kochi", "Ernakulam", "Kakkanad", "Kaloor", "Palarivattom", "MG Road", "Edappally", "Vyttila", "Cherai",
+    "Cochin University", "Mattancherry", "Paravoor", "Thevara", "Maradu", "Sreekariyam", "Aluva"
+  ],
+  "Lucknow": [
+    "Hazratganj", "Gomti Nagar", "Alambagh", "Indira Nagar", "Mohanlalganj", "Sarojini Nagar", "Mawaiya", 
+    "Charbagh", "Rajajipuram", "Vikramshila", "Chowk", "Shahjahanpur", "Chandganj", "Gokul", "Aminabad"
+  ],
+  "Indore": [
+    "Vijay Nagar", "Rajendra Nagar", "New Palasia", "Bhamori", "Mangal Nagar", "Scheme No. 78", "Rau", "Pardeshipura",
+    "Sudama Nagar", "Vikramaditya", "A.B. Road", "Sukhliya", "Annapurna Road", "Chhatribagh"
+  ],
+  "Nagpur": [
+    "Civil Lines", "Dhantoli", "Manish Nagar", "Jaripatka", "Khamla", "Mominpura", "Hingna", "Laxmi Nagar",
+    "Wadi", "Nandanvan", "Gokulpeth", "Nana Patil", "Ganeshpeth", "Sadar", "Mahal", "Manki"
+  ]
 }

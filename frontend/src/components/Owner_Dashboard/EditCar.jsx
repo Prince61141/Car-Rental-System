@@ -54,6 +54,8 @@ function EditCar() {
     false
   );
   const [showSeatsDropdown, setShowSeatsDropdown] = useState(false);
+  // NEW: deleting state
+  const [deleting, setDeleting] = useState(false);
 
   const [brandFilter, setBrandFilter] = useState("");
   const [modelFilter, setModelFilter] = useState("");
@@ -281,6 +283,44 @@ function EditCar() {
     }
   };
 
+  // NEW: delete handler
+  const handleDelete = async () => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete this car${
+          form.carnumber ? ` (${form.carnumber})` : ""
+        }? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    setMsg("");
+    setError("");
+    const token = localStorage.getItem("token");
+    try {
+      // NOTE: If your API path differs, change to: `/api/cars/${id}`
+      const res = await fetch(`http://localhost:5000/api/cars/${id}/delete`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {}
+      if (res.ok && (data.success ?? true)) {
+        setMsg("Car deleted successfully.");
+        setTimeout(() => navigate("/peer-owner/dashboard"), 800);
+      } else {
+        setError(data.message || "Failed to delete car.");
+      }
+    } catch {
+      setError("Error deleting car.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -335,6 +375,16 @@ function EditCar() {
           <h2 className="text-2xl font-bold text-[#2F2240] tracking-wide">
             Edit Car
           </h2>
+          {/* Optional top delete button */}
+          {/* <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="ml-3 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-60"
+            title="Delete this car"
+          >
+            {deleting ? "Deleting..." : "Delete"}
+          </button> */}
         </div>
 
         {error && (
@@ -925,12 +975,24 @@ function EditCar() {
           placeholder="Write something about your car (features, condition, rules)"
           required
         />
-        <button
-          type="submit"
-          className="w-full bg-[#2F2240] hover:bg-[#3d3356] text-white py-2 rounded font-semibold transition"
-        >
-          Save Changes
-        </button>
+
+        {/* ACTIONS: Delete (left) + Save (right) */}
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-semibold transition disabled:opacity-60"
+          >
+            {deleting ? "Deleting..." : "Delete Car"}
+          </button>
+          <button
+            type="submit"
+            className="bg-[#2F2240] hover:bg-[#3d3356] text-white px-4 py-2 rounded font-semibold transition"
+          >
+            Save Changes
+          </button>
+        </div>
       </form>
     </div>
   );

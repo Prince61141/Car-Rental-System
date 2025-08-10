@@ -31,6 +31,7 @@ const carSchema = new mongoose.Schema(
       rc: { type: String, required: true },
       insurance: { type: String, required: true },
       pollution: { type: String, required: true },
+      signature: { type: String, required: true },
     },
 
     description: { type: String, required: true },

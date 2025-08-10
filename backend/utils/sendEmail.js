@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendEmail = async ({ to, subject, text, html }) => {
+const sendEmail = async ({ to, subject, text, html, attachments }) => {
   const mailOptions = {
     from: `"Car Rental" <${process.env.EMAIL_USER}>`,
     to,
@@ -18,6 +18,7 @@ const sendEmail = async ({ to, subject, text, html }) => {
     text,
   };
   if (html) mailOptions.html = html;
+  if (attachments) mailOptions.attachments = attachments;
 
   await transporter.sendMail(mailOptions);
 };

@@ -31,6 +31,7 @@ function ListCar({ onCarAdded, onClose }) {
       rc: null,
       insurance: null,
       pollution: null,
+      signature: null,
     },
     description: "",
   });
@@ -53,7 +54,8 @@ function ListCar({ onCarAdded, onClose }) {
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [showAreaDropdown, setShowAreaDropdown] = useState(false);
   const [showFuelDropdown, setShowFuelDropdown] = useState(false);
-  const [showTransmissionDropdown, setShowTransmissionDropdown] = useState(false);
+  const [showTransmissionDropdown, setShowTransmissionDropdown] =
+    useState(false);
 
   const [brandFilter, setBrandFilter] = useState("");
   const [modelFilter, setModelFilter] = useState("");
@@ -249,7 +251,6 @@ function ListCar({ onCarAdded, onClose }) {
         setError("Please fill all required fields in this step.");
         return;
       }
-      // Pincode validation: 6 digits only
       if (!/^\d{6}$/.test(carForm.location.pincode)) {
         setError("Pincode must be a 6 digit number.");
         return;
@@ -272,7 +273,8 @@ function ListCar({ onCarAdded, onClose }) {
         !carForm.images.length ||
         !carForm.documents.rc ||
         !carForm.documents.insurance ||
-        !carForm.documents.pollution
+        !carForm.documents.pollution ||
+        !carForm.documents.signature
       ) {
         setError("Please upload all required images and documents.");
         return;
@@ -297,7 +299,7 @@ function ListCar({ onCarAdded, onClose }) {
       pricePerDay,
       year,
       images,
-      documents: { rc, insurance, pollution },
+      documents: { rc, insurance, pollution, signature },
     } = carForm;
 
     if (
@@ -310,7 +312,8 @@ function ListCar({ onCarAdded, onClose }) {
       images.length === 0 ||
       !rc ||
       !insurance ||
-      !pollution
+      !pollution ||
+      !signature
     ) {
       alert("Please fill all required fields and upload all documents.");
       return;
@@ -342,6 +345,7 @@ function ListCar({ onCarAdded, onClose }) {
         formData.append("rc", carForm.documents.rc);
         formData.append("insurance", carForm.documents.insurance);
         formData.append("pollution", carForm.documents.pollution);
+        formData.append("signature", carForm.documents.signature);
       }
 
       const res = await fetch("http://localhost:5000/api/cars/addcar", {
@@ -1112,26 +1116,21 @@ function ListCar({ onCarAdded, onClose }) {
               ))}
             </div>
 
-            <label className="block mt-4 mb-1 font-medium">
-              Upload Documents
-            </label>
-            {["rc", "insurance", "pollution"].map((doc) => (
-              <input
-                key={doc}
-                type="file"
-                name={doc}
-                accept="application/pdf,image/*"
-                onChange={handleDocumentUpload}
-                className="w-full mb-2"
-                required
-              />
-            ))}
-            {/* Error message */}
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2 text-center font-semibold shadow">
-                {error}
+            <label className="block mt-4 font-medium">Upload Documents</label>
+            {["rc", "insurance", "pollution", "signature"].map((doc) => (
+              <div key={doc}>
+                <label className="block mb-1 font-medium">{doc} Document</label>
+                <input
+                  key={doc}
+                  type="file"
+                  name={doc}
+                  accept="application/pdf,image/*"
+                  onChange={handleDocumentUpload}
+                  className="w-full"
+                  required
+                />
               </div>
-            )}
+            ))}
 
             {/* Error message */}
             {error && (
@@ -1169,6 +1168,46 @@ function ListCar({ onCarAdded, onClose }) {
               placeholder="Write something about your car (features, condition, rules)"
               required
             />
+
+            {/* GPS Notice and Terms */}
+            <div className="bg-yellow-50 border border-yellow-300 text-yellow-900 px-4 py-3 rounded mb-3 mt-4 text-sm">
+              <strong className="block mb-1">
+                Please install GPS in your car to avoid location and security
+                issues.
+              </strong>
+              If you have not installed a GPS device,{" "}
+              <a
+                href="https://www.google.com/search?q=gps+installation+for+car"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-blue-700"
+              >
+                click here to find GPS installation services
+              </a>
+              .
+              <div className="mt-2">
+                <input
+                  type="checkbox"
+                  id="agreeTerms"
+                  required
+                  className="mr-2"
+                />
+                <label htmlFor="agreeTerms">
+                  I agree with the{" "}
+                  <a
+                    href="/terms-and-conditions"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-blue-700"
+                  >
+                    terms and conditions
+                  </a>{" "}
+                  and confirm that my car has a GPS device installed. If not, I
+                  will not list my car.
+                </label>
+              </div>
+            </div>
+
             {/* Error message */}
             {error && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2 text-center font-semibold shadow">

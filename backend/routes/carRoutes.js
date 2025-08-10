@@ -1,6 +1,6 @@
 import express from "express";
 const router = express.Router();
-import { multerInstance, addMyCar, getMyCars, getallCars, getCarById, updateCar ,updateCarAvailability } from "../controllers/carController.js";
+import { multerInstance, addMyCar, getMyCars, getallCars, getCarById, updateCar ,updateCarAvailability, searchCars, deleteCar } from "../controllers/carController.js";
 
 router.post(
   "/addcar",
@@ -9,6 +9,7 @@ router.post(
     { name: "rc", maxCount: 1 },
     { name: "insurance", maxCount: 1 },
     { name: "pollution", maxCount: 1 },
+    { name: "signature", maxCount: 1 },
   ]),
   addMyCar
 );
@@ -18,5 +19,8 @@ router.patch("/:id/update", updateCar);
 router.get("/mycars", getMyCars);
 router.get("/allcars", getallCars);
 router.patch("/:id/availability", updateCarAvailability);
+router.get("/search", searchCars);
+
+router.delete("/:id/delete", deleteCar);
 
 export default router;

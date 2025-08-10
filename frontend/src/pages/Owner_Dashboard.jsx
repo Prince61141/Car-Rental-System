@@ -6,6 +6,7 @@ import Overview from "../components/Owner_Dashboard/Overview";
 import Cars from "../components/Owner_Dashboard/Cars";
 import Settings from "../components/Owner_Dashboard/Settings";
 import Booking from "../components/Owner_Dashboard/Booking";
+import Notifications from "../components/Owner_Dashboard/Notifications";
 import Chatbot from "../components/Chatbot";
 
 function Owner_Dashboard() {
@@ -127,6 +128,7 @@ function Owner_Dashboard() {
             {activeSection === "Cars" && <Cars />}
             {activeSection === "Bookings" && <Booking />}
             {activeSection === "Settings" && <Settings />}
+            {activeSection === "Notifications" && <Notifications />}
             {/* Add more sections as needed */}
             <Chatbot />
           </>
