@@ -60,18 +60,18 @@ const generateCarDetailsPdfBuffer = async (car, { logoUrl } = {}) => {
     doc.on("end", () => resolve(Buffer.concat(chunks)))
   );
 
-  // Header logo top-right
-  if (logoUrl) {
-    const buf = await fetchImageBuffer(logoUrl);
-    if (buf) {
-      const w = 56;
-      doc.image(buf, doc.page.width - doc.page.margins.right - w, 18, {
-        width: w,
-      });
-    }
-  }
+  // Preload logo once and reuse on every page (top-right)
+  const logoBuf = logoUrl ? await fetchImageBuffer(logoUrl) : null;
+  const drawLogoTopRight = () => {
+    if (!logoBuf) return;
+    const w = 56; // small, crisp logo
+    doc.image(logoBuf, doc.page.width - doc.page.margins.right - w, 18, {
+      width: w,
+    });
+  };
 
-  // Title
+  // FIRST PAGE: Summary/details
+  drawLogoTopRight();
   doc.fontSize(18).text("Car Details", { align: "center" }).moveDown(0.8);
 
   const addRow = (label, val) => {
@@ -106,24 +106,24 @@ const generateCarDetailsPdfBuffer = async (car, { logoUrl } = {}) => {
     addRow("Location", loc);
   }
 
-  // Car photo
+  // Car photo on first page (if any)
   const firstImage = Array.isArray(car.image)
     ? car.image[0]
     : Array.isArray(car.images)
-      ? car.images[0]
-      : car.image;
+    ? car.images[0]
+    : car.image;
   if (firstImage) {
     const img = await fetchImageBuffer(firstImage);
     if (img) {
       const maxW =
         doc.page.width - doc.page.margins.left - doc.page.margins.right;
       doc.moveDown(0.6);
-      doc.fontSize(14).text("Car Photo", { align: "left" }).moveDown(0.2);
-      doc.image(img, { fit: [maxW, 280], align: "center" });
+      doc.fontSize(14).text("Car Photo", { align: "center" }).moveDown(0.2);
+      doc.image(img, doc.page.margins.left, doc.y, { fit: [maxW, 280] });
     }
   }
 
-  // Documents (render Cloudinary PDF previews as PNG)
+  // DOCUMENTS: each document on its own page with centered title and logo top-right
   const docs = car.documents || {};
   const entries = [
     ["RC", docs.rc],
@@ -131,39 +131,29 @@ const generateCarDetailsPdfBuffer = async (car, { logoUrl } = {}) => {
     ["Pollution", docs.pollution],
   ].filter(([, url]) => !!url);
 
-  if (entries.length) {
+  for (const [label, url] of entries) {
+    const previewUrl = toPreviewImageUrl(url) || url;
     doc.addPage();
-    if (logoUrl) {
-      const buf = await fetchImageBuffer(logoUrl);
-      if (buf) {
-        const w = 56;
-        doc.image(buf, doc.page.width - doc.page.margins.right - w, 18, {
-          width: w,
-        });
-      }
-    }
-    doc.fontSize(16).text("Documents", { align: "center" }).moveDown(0.8);
+    drawLogoTopRight();
 
-    for (const [label, url] of entries) {
-      const previewUrl = toPreviewImageUrl(url) || url; // if already an image
-      doc.fontSize(13).text(label, { align: "center" }).moveDown(0.3);
+    doc.fontSize(16).text(label, { align: "center" }).moveDown(0.5);
 
-      const imgBuf = await fetchImageBuffer(previewUrl);
-      if (imgBuf) {
-        const maxW =
-          doc.page.width - doc.page.margins.left - doc.page.margins.right;
-        doc.image(imgBuf, { fit: [maxW, 560], align: "center" }).moveDown(0.6);
-      } else {
-        doc
-          .fontSize(10)
-          .fillColor("#666")
-          .text("(Preview not available)", { align: "center" })
-          .moveDown(0.6);
-      }
+    const imgBuf = await fetchImageBuffer(previewUrl);
+    if (imgBuf) {
+      const maxW =
+        doc.page.width - doc.page.margins.left - doc.page.margins.right;
+      const maxH =
+        doc.page.height - doc.page.margins.top - doc.page.margins.bottom - 60;
+      doc.image(imgBuf, doc.page.margins.left, doc.y, { fit: [maxW, maxH] });
+    } else {
+      doc
+        .fontSize(10)
+        .fillColor("#666")
+        .text("(Preview not available)", { align: "center" });
     }
   }
 
-  // Signature bottom-right
+  // Signature bottom-right on the last content page (before T&C)
   const sigUrl = docs.signature || car.signature;
   if (sigUrl) {
     const sig = await fetchImageBuffer(sigUrl);
@@ -183,6 +173,59 @@ const generateCarDetailsPdfBuffer = async (car, { logoUrl } = {}) => {
         );
     }
   }
+
+  doc.addPage();
+  drawLogoTopRight();
+
+  const contentW =
+    doc.page.width - doc.page.margins.left - doc.page.margins.right;
+
+  try {
+    doc.font("Helvetica-Bold");
+  } catch {}
+  doc
+    .fontSize(16)
+    .fillColor("#111")
+    .text("Terms & Conditions", { align: "center" })
+    .moveDown(0.6);
+  try {
+    doc.font("Helvetica");
+  } catch {}
+  doc.fontSize(11).fillColor("#222");
+
+  const terms = [
+    "You confirm all car details and documents provided are accurate and valid.",
+    "Vehicle must be maintained in roadworthy condition with current RC, Insurance, and PUC.",
+    "The renter is responsible for fuel, tolls, fines, and penalties unless otherwise agreed.",
+    "Any accidents, damages, or theft during rental must be reported promptly to the platform and authorities.",
+    "Unauthorized modifications or repairs during rental are prohibited.",
+    "You consent to storage and processing of your data in accordance with our Privacy Policy.",
+    "Cancellations, refunds, and disputes are governed by platform policies.",
+    "This agreement is governed by applicable local laws and jurisdictions.",
+    "By listing your car, you acknowledge and accept these Terms & Conditions.",
+  ];
+
+  const lineGap = 6;
+  for (const t of terms) {
+    doc
+      .text(`• ${t}`, doc.page.margins.left, doc.y, {
+        width: contentW,
+        align: "left",
+        lineGap,
+      })
+      .moveDown(0.2);
+  }
+
+  doc.moveDown(0.8);
+  doc
+    .fontSize(10)
+    .fillColor("#444")
+    .text(
+      "I have read and agree to the Terms & Conditions stated above.",
+      doc.page.margins.left,
+      doc.y,
+      { width: contentW, align: "left" }
+    );
 
   doc.end();
   return done;
@@ -303,15 +346,16 @@ export const addMyCar = async (req, res) => {
         const firstImage = Array.isArray(car.image)
           ? car.image[0]
           : Array.isArray(car.images)
-            ? car.images[0]
-            : car.image || null;
+          ? car.images[0]
+          : car.image || null;
 
         const pdfBuffer = await generateCarDetailsPdfBuffer(car, { logoUrl });
 
         await sendEmail({
           to: user.email,
-          subject: `${appName}: Car listed - ${car.brand || ""} ${car.model || ""
-            } ${car.carnumber ? `(${car.carnumber})` : ""}`.trim(),
+          subject: `${appName}: Car listed - ${car.brand || ""} ${
+            car.model || ""
+          } ${car.carnumber ? `(${car.carnumber})` : ""}`.trim(),
           text: "Your car has been added to the platform.",
           html: buildCarCreatedEmail({
             appName,
@@ -497,8 +541,7 @@ const destroyCloudinaryByUrl = async (url) => {
   } catch {
     try {
       await cloudinary.uploader.destroy(publicId, { resource_type: "raw" });
-    } catch {
-    }
+    } catch {}
   }
 };
 
@@ -524,17 +567,17 @@ export const deleteCar = async (req, res) => {
     const firstImage = Array.isArray(car.image)
       ? car.image[0]
       : Array.isArray(car.images)
-        ? car.images[0]
-        : car.image || null;
+      ? car.images[0]
+      : car.image || null;
     const appName = process.env.APP_NAME || "Car Rental";
 
     const imageUrls = Array.isArray(car.image)
       ? car.image
       : Array.isArray(car.images)
-        ? car.images
-        : car.image
-          ? [car.image]
-          : [];
+      ? car.images
+      : car.image
+      ? [car.image]
+      : [];
     const docUrls = Object.values(car.documents || {});
 
     await Promise.all([
@@ -545,8 +588,9 @@ export const deleteCar = async (req, res) => {
     await Car.deleteOne({ _id: car._id });
 
     if (toEmail) {
-      const subject = `${appName}: Car deleted - ${car.brand || ""} ${car.model || ""
-        } ${car.carnumber ? `(${car.carnumber})` : ""}`.trim();
+      const subject = `${appName}: Car deleted - ${car.brand || ""} ${
+        car.model || ""
+      } ${car.carnumber ? `(${car.carnumber})` : ""}`.trim();
       const html = buildCarDeletedEmail({
         appName,
         userName: ownerName,

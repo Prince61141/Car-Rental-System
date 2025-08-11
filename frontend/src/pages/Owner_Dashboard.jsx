@@ -78,7 +78,7 @@ function Owner_Dashboard() {
         open={sidebarOpen}
         setOpen={setSidebarOpen}
       />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto disabledscrollbar pb-3">
         {!verified ? (
           <OwnerVerification
             onVerify={() => setVerified(true)}

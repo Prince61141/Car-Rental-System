@@ -11,7 +11,7 @@ const testimonials = Array(8).fill({
 
 const TestimonialCard = ({ quote, name, title, image }) => (
   <div className="min-w-[300px] max-w-sm bg-white rounded-xl shadow-md p-5 mx-4 transition duration-300 ease-in-out hover:shadow-2xl hover:scale-[1.03] hover:-translate-y-1 cursor-pointer">
-    <FaQuoteLeft className="text-purple-800 text-2xl mb-3" />
+    <FaQuoteLeft className="text-[#2f2240] text-2xl mb-3" />
     <p className="text-gray-700 text-sm mb-5">{quote}</p>
     <div className="flex items-center gap-3">
       <img src={image} alt={name} className="w-10 h-10 rounded-full object-cover" />

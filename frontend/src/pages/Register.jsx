@@ -151,11 +151,11 @@ const Register = () => {
 
   return (
     <div>
-      <Header />
-      <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
+      <Header scrollEffect={false} />
+      <div className="flex flex-col md:flex-row bg-white mt-20">
         {/* Left: Form */}
-        <div className="flex flex-col justify-center w-full md:w-1/2 px-8 sm:px-10 md:px-16 py-8 md:py-12 bg-white">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-2">
+        <div className="flex flex-col justify-center w-full md:w-1/2 px-4 sm:px-8 md:px-16 py-6 sm:py-8 md:py-12 bg-white min-h-screen overflow-y-auto">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-2 text-[#2f2240]">
             Create your account
           </h2>
           <div className="mb-8 text-gray-500"> </div>
@@ -174,7 +174,7 @@ const Register = () => {
                   name="name"
                   placeholder="Enter Your Name"
                   onChange={handleChange}
-                  className="w-full p-3 border rounded focus:outline-none focus:ring-1 focus:ring-[#2F2240]"
+                  className="w-full p-3 border rounded focus:outline-none focus:ring-1 focus:ring-[#2F2240] text-[16px] sm:text-base"
                   value={form.name}
                 />
               </div>
@@ -185,38 +185,40 @@ const Register = () => {
                   name="email"
                   placeholder="Enter Your Email"
                   onChange={handleChange}
-                  className="w-full p-3 border rounded focus:outline-none focus:ring-1 focus:ring-[#2F2240]"
+                  className="w-full p-3 border rounded focus:outline-none focus:ring-1 focus:ring-[#2F2240] text-[16px] sm:text-base"
                   value={form.email}
                 />
               </div>
               <div className="mb-4">
                 <label className="block mb-1 font-medium">Phone Number</label>
                 <input
-                  type="number"
+                  type="tel"
                   name="phone"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Enter Your Phone number"
                   onChange={handleChange}
-                  className="w-full p-3 border rounded focus:outline-none focus:ring-1 focus:ring-[#2F2240]"
+                  className="w-full p-3 border rounded focus:outline-none focus:ring-1 focus:ring-[#2F2240] text-[16px] sm:text-base"
                   value={form.phone}
                 />
               </div>
-              <div className="flex items-center mb-4">
+              <div className="flex items-center mb-4  cursor-pointer">
                 <input
                   type="checkbox"
                   name="agree"
                   checked={form.agree}
                   onChange={handleChange}
-                  className="mr-2"
+                  className="mr-2 accent-[#2F2240] cursor-pointer"
                   id="agree"
                 />
                 <label
                   htmlFor="agree"
-                  className="text-sm text-selection-disabled"
+                  className="text-sm text-selection-disabled  cursor-pointer"
                 >
                   I agree to the Terms of Service and Privacy Policy
                 </label>
               </div>
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="flex sm:flex-row gap-4 mb-6">
                 <label
                   className={`flex-1 flex items-center border rounded px-4 py-2 cursor-pointer ${
                     form.role === "renter"
@@ -255,22 +257,27 @@ const Register = () => {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
                 <button
                   type="submit"
-                  className="w-full sm:w-1/2 bg-[#2F2240] text-white py-3 rounded font-semibold text-base sm:text-lg hover:bg-[#2F2240] transition"
+                  className="w-full sm:w-1/2 bg-[#2F2240] text-white py-3 rounded-lg font-semibold text-base sm:text-lg hover:bg-[#3d3356] transition"
                 >
                   Sign Up
                 </button>
                 <div className="w-full sm:w-1/2 flex justify-center">
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={handleGoogleError}
-                    size="large"
-                  />
+                  <div className="scale-95 sm:scale-100">
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={handleGoogleError}
+                      size="large"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div className="mt-4 text-xs sm:text-sm text-center text-gray-600">
                 Already have account?{" "}
-                <a href="/login" className="text-[#2F2240] font-semibold underline">
+                <a
+                  href="/login"
+                  className="text-[#2F2240] font-semibold underline"
+                >
                   Login
                 </a>
               </div>
@@ -291,7 +298,7 @@ const Register = () => {
                   name="password"
                   placeholder="Set Password"
                   onChange={handleChange}
-                  className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-purple-400 text-base sm:text-lg"
+                  className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-purple-400 text-[16px] sm:text-lg"
                   value={form.password}
                 />
               </div>
@@ -304,7 +311,7 @@ const Register = () => {
                   name="confirmPassword"
                   placeholder="Confirm Password"
                   onChange={handleChange}
-                  className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-purple-400 text-base sm:text-lg"
+                  className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-purple-400 text-[16px] sm:text-lg"
                   value={form.confirmPassword}
                 />
               </div>
@@ -329,9 +336,11 @@ const Register = () => {
                 <input
                   type="text"
                   name="otp"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Enter OTP"
                   onChange={handleChange}
-                  className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-purple-400 text-base sm:text-lg"
+                  className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-purple-400 text-[16px] sm:text-lg"
                   value={form.otp}
                 />
               </div>
@@ -367,13 +376,12 @@ const Register = () => {
         </div>
 
         {/* Right: Image & Info */}
-        <div className="hidden md:flex w-1/2">
+        <div className="hidden md:flex w-1/2 relative bg-transparent">
           <div className="w-full">
             <img
               src={carImg}
               alt="Car"
-              className="w-full"
-              style={{ height: "100%" }}
+              className="w-full h-full object-cover"
             />
           </div>
         </div>

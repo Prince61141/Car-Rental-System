@@ -29,7 +29,7 @@ export default function Hero() {
             your car or book one on the go, AutoConnect makes it simple, secure,
             and seamless.
           </p>
-          <button className="mt-4 sm:mt-16 px-6 py-3 bg-purple-900 text-white rounded-lg hover:bg-purple-800 transition">
+          <button className="mt-4 sm:mt-16 px-6 py-3 bg-[#2f2240] text-white rounded-lg hover:bg-[#3d3356] transition">
             Rent A Car Now
           </button>
         </div>

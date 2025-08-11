@@ -100,8 +100,7 @@ function HomePage() {
                   car={{
                     ...car,
                     image:
-                      car.image?.[0] ||
-                      "https://via.placeholder.com/300x150?text=No+Image",
+                      car.image || "https://via.placeholder.com/300x150?text=No+Image",
                     name: car.model,
                     rating: car.rating || 4.7,
                     price: car.pricePerDay,

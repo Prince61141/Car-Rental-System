@@ -31,7 +31,7 @@ const NotFound = () => {
           <p className="text-gray-500 text-lg mt-2">Oops! Page not found.</p>
           <Link
             to="/"
-            className="no-underline inline-block mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            className="no-underline inline-block mt-6 px-6 py-2 bg-[#2f2240] text-white rounded-lg hover:bg-[#3d3356] transition"
           >
             🏠 Go to Home
           </Link>

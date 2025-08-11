@@ -108,7 +108,7 @@ const Login = () => {
               <input
                 type="text"
                 placeholder="Enter Your Email"
-                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-purple-400"
+                className="w-full p-3 border rounded focus:outline-none focus:ring-1 focus:ring-[#2f2240]"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -116,18 +116,18 @@ const Login = () => {
               <input
                 type="password"
                 placeholder="Password"
-                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-purple-400"
+                className="w-full p-3 border rounded focus:outline-none focus:ring-1 focus:ring-[#2f2240]"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
               <div className="flex items-center justify-between">
-                <label className="flex items-center text-[#3d3356] text-opacity-80 text-sm text-selection-disabled">
+                <label className="flex items-center text-[#2f2240] text-opacity-80 text-sm text-selection-disabled cursor-pointer">
                   <input
                     type="checkbox"
                     checked={remember}
                     onChange={(e) => setRemember(e.target.checked)}
-                    className="mr-2"
+                    className="mr-2 cursor-pointer accent-[#2F2240]"
                   />
                   Remember me
                 </label>
@@ -141,7 +141,7 @@ const Login = () => {
               <div className="flex gap-4 mt-2">
                 <button
                   type="submit"
-                  className="flex-1 bg-[#3d3356] text-white py-3 rounded-lg font-semibold text-lg hover:bg-[#2a223e] transition disabled:opacity-60"
+                  className="flex-1 bg-[#2f2240] text-white py-3 rounded-lg font-semibold text-lg hover:bg-[#3d3356] transition disabled:opacity-60"
                   disabled={loading}
                 >
                   {loading ? "Logging in..." : "Login"}
@@ -163,7 +163,7 @@ const Login = () => {
             </form>
             <div className="mt-5 text-[#3d3356]  center text-opacity-80 text-sm">
               Don't have account?{" "}
-              <a href="/register" className="font-semibold hover:underline">
+              <a href="/register" className="text-[#2f2240] font-semibold hover:underline">
                 Sign up
               </a>
             </div>

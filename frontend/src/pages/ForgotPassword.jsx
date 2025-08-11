@@ -37,7 +37,7 @@ function ForgotPassword() {
     
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-[#2f1c53]">Forgot Password</h2>
+        <h2 className="text-2xl font-bold mb-6 text-[#2f2240]">Forgot Password</h2>
         {sent ? (
           <div className="text-green-600 mb-4">{msg}</div>
         ) : (
@@ -46,7 +46,7 @@ function ForgotPassword() {
               <label className="block text-gray-700 mb-1">Email address</label>
               <input
                 type="email"
-                className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-purple-400"
+                className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-[#2f2240]"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -56,7 +56,7 @@ function ForgotPassword() {
             {msg && <div className="text-red-600">{msg}</div>}
             <button
               type="submit"
-              className="w-full bg-[#2f1c53] hover:bg-[#3d3356] text-white py-2 rounded font-semibold transition"
+              className="w-full bg-[#2f2240] hover:bg-[#3d3356] text-white py-2 rounded font-semibold transition"
               disabled={loading}
             >
               {loading ? "Sending..." : "Send Reset Link"}
@@ -64,7 +64,7 @@ function ForgotPassword() {
           </form>
         )}
         <div className="mt-6 text-center">
-          <a href="/login" className="text-purple-700 hover:underline">
+          <a href="/login" className="text-[#2f2240] hover:underline">
             Back to Login
           </a>
         </div>

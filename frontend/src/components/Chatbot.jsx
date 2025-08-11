@@ -158,7 +158,7 @@ export default function Chatbot() {
               </div>
             </div>
           )}
-          <div className="bg-[#3d3356] text-white px-4 py-3 rounded-t-xl flex justify-between items-center">
+          <div className="bg-[#2f2240] text-white px-4 py-3 rounded-t-xl flex justify-between items-center">
             <span className="font-semibold">AutoConnect Chatbot</span>
             <button
               onClick={() => setOpen(false)}
@@ -216,13 +216,13 @@ export default function Chatbot() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#3d3356] text-sm"
+              className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2f2240] text-sm"
               placeholder="Type your message..."
               disabled={loading}
             />
             <button
               type="submit"
-              className="ml-2 px-4 py-2 bg-[#3d3356] text-white rounded-lg font-semibold hover:bg-[#2a223e] transition"
+              className="ml-2 px-4 py-2 bg-[#2f2240] text-white rounded-lg font-semibold hover:bg-[#3d3356] transition"
               disabled={loading}
             >
               Send
@@ -232,7 +232,7 @@ export default function Chatbot() {
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="bg-[#3d3356] text-white px-6 py-3 rounded-full shadow-xl font-semibold hover:bg-[#2a223e] transition flex items-center gap-2"
+          className="bg-[#2f2240] text-white px-6 py-3 rounded-full shadow-xl font-semibold hover:bg-[#3d3356] transition flex items-center gap-2"
         >
           <span>Chat</span>
           <span role="img" aria-label="chat">

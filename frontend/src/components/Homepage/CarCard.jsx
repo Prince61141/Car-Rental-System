@@ -41,14 +41,14 @@ function CarCard({ car }) {
       {/* Car Image */}
       <div className="w-full h-36 bg-gray-100 rounded-xl mb-3 overflow-hidden flex items-center justify-center">
         <img
-          src={car.image}
+          src={car.image[0]}
           alt={car.name}
-          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
       </div>
       {/* Car Info */}
       <div className="flex items-center justify-between mb-1">
-        <h3 className="font-semibold text-gray-900 truncate">{car.name}</h3>
+        <h3 className="font-semibold text-gray-900 truncate">{car.brand} {car.model}</h3>
         <div className="flex items-center gap-1">
           <span className="text-yellow-500 text-lg">★</span>
           <span className="text-sm font-medium text-gray-700">{car.rating || "4.7"}</span>
