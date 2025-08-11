@@ -29,7 +29,6 @@ function Owner_Dashboard() {
     const fetchProfile = async () => {
       const token = localStorage.getItem("token");
       if (!token) {
-        alert("Token not found. Please login again.");
         navigate("/login");
         return;
       }

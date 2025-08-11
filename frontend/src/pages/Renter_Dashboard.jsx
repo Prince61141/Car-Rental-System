@@ -27,7 +27,6 @@ function Renter_Dashboard() {
     const fetchProfile = async () => {
       const token = localStorage.getItem("token");
       if (!token) {
-        alert("Token not found. Please login again.");
         navigate("/login");
         return;
       }
@@ -70,14 +69,14 @@ function Renter_Dashboard() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-full font-sans bg-gray-100">
+    <div className="flex flex-col md:flex-row h-screen w-full font-sans bg-gray-100 h-screen">
       <Sidebar
         active={activeSection}
         setActive={setActiveSection}
         open={sidebarOpen}
         setOpen={setSidebarOpen}
       />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto disabledscrollbar">
         {!verified ? (
           <RenterVerification
             onVerify={() => setVerified(true)}

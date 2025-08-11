@@ -1,14 +1,31 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 function RentCarPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [pickupAt, setPickupAt] = useState("");
+  const [dropoffAt, setDropoffAt] = useState("");
+  const [quote, setQuote] = useState(null);
+  const [quoting, setQuoting] = useState(false);
+  const [booking, setBooking] = useState({
+    loading: false,
+    error: "",
+    success: false,
+  });
+
+  const bookingRefMobile = useRef(null);
+  const bookingRefDesktop = useRef(null);
+
+  // Fetch car
   useEffect(() => {
-    // Fetch car details by ID
     const fetchCar = async () => {
       try {
         const res = await fetch(`http://localhost:5000/api/cars/${id}/details`);
@@ -16,78 +33,516 @@ function RentCarPage() {
         if (res.ok && data.success) {
           setCar(data.car);
         }
-      } catch {
-        // handle error
-      }
+      } catch {}
       setLoading(false);
     };
     fetchCar();
   }, [id]);
 
+  useEffect(() => {
+    if (!pickupAt) {
+      const start = new Date();
+      start.setHours(start.getHours() + 4, 0, 0, 0);
+      const end = new Date(start.getTime());
+      end.setHours(end.getHours() + 24);
+      const fmt = (d) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+          2,
+          "0"
+        )}-${String(d.getDate()).padStart(2, "0")}T${String(
+          d.getHours()
+        ).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+      setPickupAt(fmt(start));
+      setDropoffAt(fmt(end));
+    }
+  }, [pickupAt]);
+
+  useEffect(() => {
+    if (!pickupAt || !dropoffAt) return;
+    const p = new Date(pickupAt).getTime();
+    const d = new Date(dropoffAt).getTime();
+    const minDrop = p + 4 * 60 * 60 * 1000;
+    if (d < minDrop) {
+      const newDrop = new Date(minDrop);
+      const fmt = (x) =>
+        `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(
+          2,
+          "0"
+        )}-${String(x.getDate()).padStart(2, "0")}T${String(
+          x.getHours()
+        ).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`;
+      setDropoffAt(fmt(newDrop));
+    }
+  }, [pickupAt, dropoffAt]);
+
+  // Quote pricing/availability
+  useEffect(() => {
+    const run = async () => {
+      if (!pickupAt || !dropoffAt) return;
+      setQuoting(true);
+      try {
+        const res = await fetch("http://localhost:5000/api/bookings/quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            carId: id,
+            pickupAt: new Date(pickupAt).toISOString(),
+            dropoffAt: new Date(dropoffAt).toISOString(),
+          }),
+        });
+        const data = await res.json();
+        setQuote(res.ok ? data : null);
+      } catch {
+        setQuote(null);
+      } finally {
+        setQuoting(false);
+      }
+    };
+    run();
+  }, [id, pickupAt, dropoffAt]);
+
+  const handleBook = async () => {
+    setBooking({ loading: true, error: "", success: false });
+    try {
+      let token =
+        localStorage.getItem("token") || localStorage.getItem("accessToken");
+      if (!token) {
+        setBooking({ loading: false, error: "", success: false });
+        navigate("/login", {
+          state: { next: location.pathname + location.search },
+        });
+        return;
+      }
+      token = token.replace(/^"+|"+$/g, "");
+
+      const res = await fetch("http://localhost:5000/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          carId: id,
+          pickupAt: new Date(pickupAt).toISOString(),
+          dropoffAt: new Date(dropoffAt).toISOString(),
+          paymentMethod: "cod",
+        }),
+      });
+      const data = await res.json();
+
+      if (res.status === 403 && data?.code === "USER_NOT_VERIFIED") {
+        setBooking({
+          loading: false,
+          error: "Please verify your account to book.",
+          success: false,
+        });
+        setTimeout(() => {
+          navigate("/renter/dashboard");
+        }, 2500);
+        return;
+      }
+
+      if (!res.ok) throw new Error(data.message || "Booking failed");
+
+      setBooking({ loading: false, error: "", success: true });
+    } catch (e) {
+      setBooking({ loading: false, error: e.message, success: false });
+    }
+  };
+
+  const scrollToBooking = () => {
+    (bookingRefMobile.current || bookingRefDesktop.current)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
+  const { mapSrc, shownArea } = useMemo(() => {
+    if (!car?.location) return { mapSrc: "", shownArea: "" };
+    const lat = car.location.lat;
+    const lng = car.location.lng;
+    const areaText = [car.location.area, car.location.city, car.location.state]
+      .filter(Boolean)
+      .join(", ");
+    const hasArea = !!car.location.area;
+    const hasCity = !!car.location.city;
+    const zoom = hasArea ? 13 : hasCity ? 12 : 9;
+
+    const src =
+      lat != null && lng != null
+        ? `https://maps.google.com/maps?ll=${lat},${lng}&z=${zoom}&t=m&output=embed`
+        : `https://maps.google.com/maps?q=${encodeURIComponent(
+            areaText || car.location?.city || ""
+          )}&z=${zoom}&t=m&output=embed&iwloc=0`;
+
+    return { mapSrc: src, shownArea: areaText || car.location?.city || "" };
+  }, [car]);
+
+  // Helpers
+  const fmtLocal = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(
+      d.getMinutes()
+    ).padStart(2, "0")}`;
+
+  const minPickupStr = useMemo(() => {
+    const t = new Date(Date.now() + 3 * 60 * 60 * 1000); // 3h lead
+    return fmtLocal(t);
+  }, []);
+
+  const minDropStr = useMemo(() => {
+    if (!pickupAt)
+      return fmtLocal(
+        new Date(Date.now() + 3 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000)
+      );
+    const t = new Date(new Date(pickupAt).getTime() + 4 * 60 * 60 * 1000); // +4h duration
+    return fmtLocal(t);
+  }, [pickupAt]);
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-lg text-gray-600">Loading...</div>
+      <div>
+        <div className="relative z-50">
+          <Header />
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 py-10">
+          <div className="animate-pulse grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-8 h-64 rounded-2xl bg-gray-200" />
+            <div className="lg:col-span-4 h-64 rounded-2xl bg-gray-200" />
+          </div>
+        </div>
+        <Footer />
       </div>
     );
   }
 
   if (!car) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-red-600">Car not found</div>
-      </div>
-    );
+    window.location.href = "/404";
   }
 
   return (
-    <div className="max-w-3xl mx-auto my-10 bg-white rounded-2xl shadow-lg p-8">
-      <button
-        className="mb-4 text-[#2A1A3B] hover:underline"
-        onClick={() => navigate(-1)}
-      >
-        ← Back
-      </button>
-      <div className="flex flex-col md:flex-row gap-8">
-        <div className="flex-1 flex items-center justify-center">
-          <img
-            src={car.images?.[0] || car.image}
-            alt={car.name}
-            className="w-full max-w-xs h-64 object-contain rounded-xl bg-gray-100"
-          />
-        </div>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold text-[#2A1A3B] mb-2">{car.title || car.name}</h2>
-          <div className="mb-2 text-gray-700">
-            <span className="font-semibold">{car.brand}</span>{" "}
-            {car.model && <span>{car.model}</span>}
-          </div>
-          <div className="mb-2 text-gray-600">
-            <span className="mr-2">Year: {car.year}</span>
-            <span className="mr-2">Seats: {car.seats}</span>
-            <span className="mr-2">Fuel: {car.fuelType}</span>
-            <span>Transmission: {car.transmission}</span>
-          </div>
-          <div className="mb-2 text-gray-600">
-            <span>
-              Location: {car.location?.city}, {car.location?.state}
-            </span>
-          </div>
-          <div className="mb-4 text-gray-800">{car.description}</div>
-          <div className="flex items-center gap-4 mb-4">
-            <span className="text-2xl font-bold text-[#2A1A3B]">
-              ₹{car.pricePerDay || car.price}
-            </span>
-            <span className="text-gray-500 text-sm">/Day</span>
-          </div>
-          <button
-            className="bg-[#2A1A3B] hover:bg-[#1c1128] text-white px-8 py-3 rounded-lg shadow transition-all duration-200 text-base font-semibold"
-            // onClick={...} // Add booking logic here
-          >
-            Book Now
-          </button>
-        </div>
+    <div>
+      <div className="relative z-50">
+        <Header />
       </div>
+
+      <main className="pt-16 sm:pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <section className="mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#2A1A3B]">
+                {car.brand} {car.model}
+              </h1>
+              <p className="text-gray-600 text-sm sm:text-base">
+                {car.location?.city}, {car.location?.state}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="order-1 lg:order-1 lg:col-span-8 space-y-6">
+            <div className="rounded-2xl overflow-hidden bg-white border">
+              <div className="w-full h-64 sm:h-80 lg:h-[420px] bg-gray-100">
+                <img
+                  src={car.images?.[0] || car.image}
+                  alt={car.name || `${car.brand} ${car.model}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+
+            {/* Specs */}
+            <div className="bg-white rounded-2xl border p-5">
+              <h2 className="text-lg font-semibold text-[#2A1A3B] mb-3">
+                Specifications
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                <div className="px-3 py-2 rounded-lg bg-[#f7f6fa]">
+                  <span className="font-medium">Year:</span> {car.year || "-"}
+                </div>
+                <div className="px-3 py-2 rounded-lg bg-[#f7f6fa]">
+                  <span className="font-medium">Seats:</span> {car.seats || "-"}
+                </div>
+                <div className="px-3 py-2 rounded-lg bg-[#f7f6fa]">
+                  <span className="font-medium">Fuel:</span>{" "}
+                  {car.fuelType || "-"}
+                </div>
+                <div className="px-3 py-2 rounded-lg bg-[#f7f6fa]">
+                  <span className="font-medium">Transmission:</span>{" "}
+                  {car.transmission || "-"}
+                </div>
+              </div>
+            </div>
+
+            {/* Booking (mobile only) - placed RIGHT AFTER Specs */}
+            <div ref={bookingRefMobile} className="lg:hidden">
+              <div className="bg-white border rounded-2xl p-5">
+                <h3 className="text-lg font-semibold text-[#2A1A3B] mb-3">
+                  Book this car
+                </h3>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Pickup
+                    </label>
+                    <input
+                      type="datetime-local"
+                      className="w-full border rounded-lg px-3 py-2 focus:ring-2 ring-offset-1 focus:ring-[#2A1A3B] outline-none"
+                      value={pickupAt}
+                      onChange={(e) => setPickupAt(e.target.value)}
+                      min={minPickupStr} // enforce 3h lead
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Dropoff
+                    </label>
+                    <input
+                      type="datetime-local"
+                      className="w-full border rounded-lg px-3 py-2 focus:ring-2 ring-offset-1 focus:ring-[#2A1A3B] outline-none"
+                      value={dropoffAt}
+                      onChange={(e) => setDropoffAt(e.target.value)}
+                      min={minDropStr} // enforce 4h min duration
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  {quoting ? (
+                    <div className="text-gray-600 text-sm">
+                      Checking availability...
+                    </div>
+                  ) : quote ? (
+                    quote.success ? (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="text-sm">
+                            <div className="mb-1">
+                              Status:{" "}
+                              <span
+                                className={`font-semibold ${
+                                  quote.available
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {quote.available
+                                  ? "Available"
+                                  : "Not Available"}
+                              </span>
+                            </div>
+                            <div>
+                              Hours: {quote.hours != null ? quote.hours : "-"}
+                            </div>
+                            <div>
+                              Charged Days:{" "}
+                              {quote.billableDays != null
+                                ? quote.billableDays
+                                : "-"}
+                            </div>
+                            <div>Price/Day: ₹{quote.pricePerDay}</div>
+                            <div className="font-semibold mt-1">
+                              Total: ₹{quote.totalAmount} {quote.currency}
+                            </div>
+                          </div>
+                          <button
+                            disabled={!quote.available || booking.loading}
+                            onClick={handleBook}
+                            className={`px-5 py-2 rounded-lg font-semibold whitespace-nowrap ${
+                              quote.available
+                                ? "bg-[#2A1A3B] text-white hover:bg-[#1c1128]"
+                                : "bg-gray-300 text-gray-600 cursor-not-allowed"
+                            }`}
+                          >
+                            {booking.loading ? "Booking..." : "Confirm Booking"}
+                          </button>
+                        </div>
+                        {!quote.available && quote.message ? (
+                          <div className="text-xs text-red-600">
+                            {quote.message}
+                          </div>
+                        ) : null}
+                        {quote.overlap ? (
+                          <div className="text-xs text-red-600">
+                            Selected dates overlap with an existing booking.
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="text-red-600 text-sm">
+                        Failed to get quote
+                      </div>
+                    )
+                  ) : null}
+                  {booking.error && (
+                    <div className="mt-3 text-sm text-red-600">
+                      {booking.error}
+                    </div>
+                  )}
+                  {booking.success && (
+                    <div className="mt-3 text-sm text-green-600">
+                      Booking confirmed!
+                    </div>
+                  )}
+                </div>
+                <p className="mt-4 text-xs text-gray-500">
+                  By booking, you agree to the platform terms & policies.
+                </p>
+              </div>
+            </div>
+
+            {/* Description */}
+            {car.description ? (
+              <div className="bg-white rounded-2xl border p-5">
+                <h2 className="text-lg font-semibold text-[#2A1A3B] mb-2">
+                  Description
+                </h2>
+                <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
+                  {car.description}
+                </p>
+              </div>
+            ) : null}
+
+            {/* Pickup Area Map */}
+            {mapSrc && (car.location?.lat != null || shownArea) ? (
+              <div className="bg-white rounded-2xl border p-5">
+                <h2 className="text-lg font-semibold text-[#2A1A3B] mb-3">
+                  Pickup Area: {shownArea}
+                </h2>
+                <div className="rounded-xl overflow-hidden border">
+                  <iframe
+                    title="Pickup Area"
+                    src={mapSrc}
+                    width="100%"
+                    height="360"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {/* Right: Booking card (desktop only, sticky) */}
+          <div className="order-2 lg:order-2 lg:col-span-4 hidden lg:block">
+            <div ref={bookingRefDesktop} className="lg:sticky lg:top-24">
+              <div className="bg-white border rounded-2xl p-5">
+                <h3 className="text-lg font-semibold text-[#2A1A3B] mb-3">
+                  Book this car
+                </h3>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Pickup
+                    </label>
+                    <input
+                      type="datetime-local"
+                      className="w-full border rounded-lg px-3 py-2 focus:ring-2 ring-offset-1 focus:ring-[#2A1A3B] outline-none"
+                      value={pickupAt}
+                      onChange={(e) => setPickupAt(e.target.value)}
+                      min={minPickupStr}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Dropoff
+                    </label>
+                    <input
+                      type="datetime-local"
+                      className="w-full border rounded-lg px-3 py-2 focus:ring-2 ring-offset-1 focus:ring-[#2A1A3B] outline-none"
+                      value={dropoffAt}
+                      onChange={(e) => setDropoffAt(e.target.value)}
+                      min={minDropStr}
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  {quoting ? (
+                    <div className="text-gray-600 text-sm">
+                      Checking availability...
+                    </div>
+                  ) : quote ? (
+                    quote.success ? (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="text-sm">
+                            <div className="mb-1">
+                              Status:{" "}
+                              <span
+                                className={`font-semibold ${
+                                  quote.available
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {quote.available
+                                  ? "Available"
+                                  : "Not Available"}
+                              </span>
+                            </div>
+                            <div>
+                              Hours: {quote.hours != null ? quote.hours : "-"}
+                            </div>
+                            <div>
+                              Charged Days:{" "}
+                              {quote.billableDays != null
+                                ? quote.billableDays
+                                : "-"}
+                            </div>
+                            <div>Price/Day: ₹{quote.pricePerDay}</div>
+                            <div className="font-semibold mt-1">
+                              Total: ₹{quote.totalAmount} {quote.currency}
+                            </div>
+                          </div>
+                          <button
+                            disabled={!quote.available || booking.loading}
+                            onClick={handleBook}
+                            className={`px-5 py-2 rounded-lg font-semibold whitespace-nowrap ${
+                              quote.available
+                                ? "bg-[#2A1A3B] text-white hover:bg-[#1c1128]"
+                                : "bg-gray-300 text-gray-600 cursor-not-allowed"
+                            }`}
+                          >
+                            {booking.loading ? "Booking..." : "Confirm Booking"}
+                          </button>
+                        </div>
+                        {!quote.available && quote.message ? (
+                          <div className="text-xs text-red-600">
+                            {quote.message}
+                          </div>
+                        ) : null}
+                        
+                      </div>
+                    ) : (
+                      <div className="text-red-600 text-sm">
+                        Failed to get quote
+                      </div>
+                    )
+                  ) : null}
+                  {booking.error && (
+                    <div className="mt-3 text-sm text-red-600">
+                      {booking.error}
+                    </div>
+                  )}
+                  {booking.success && (
+                    <div className="mt-3 text-sm text-green-600">
+                      Booking confirmed!
+                    </div>
+                  )}
+                </div>
+                <p className="mt-4 text-xs text-gray-500">
+                  By booking, you agree to the platform terms & policies.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <Footer />
     </div>
   );
 }

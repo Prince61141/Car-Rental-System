@@ -35,8 +35,8 @@ function Sidebar({ active = "Dashboard", setActive, open, setOpen }) {
         style={{ minWidth: open ? "18rem" : "0" }}
       >
         <div>
-          <div className="text-2xl font-bold px-6 mb-8 tracking-wide">
-            AUTOCONNECT
+          <div className="text-2xl font-bold px-6 mb-8 tracking-wide text-[#2F2240]">
+            <a href="/">AUTOCONNECT</a>
           </div>
 
           <nav className="space-y-1 px-6">
@@ -115,7 +115,7 @@ function Sidebar({ active = "Dashboard", setActive, open, setOpen }) {
         </div>
 
         <button
-          className="bg-[#2F2240] hover:bg-[#2F2200] text-white mx-6 py-3 rounded-lg flex justify-center items-center gap-2 font-semibold text-base transition mb-2"
+          className="bg-[#2F2240] hover:bg-[#3d3356] text-white mx-6 py-3 rounded-lg flex justify-center items-center gap-2 font-semibold text-base transition mb-2"
           onClick={handleLogout}
         >
           <MdLogout size={20} />
