@@ -187,8 +187,17 @@ export const createBooking = async (req, res) => {
     const userId = req.user?._id || req.user?.id || req.user?.userId;
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const renter = await User.findById(userId).select("verified");
-    if (!renter || renter.verified !== true) {
+    // Require renter role
+    const renter = await User.findById(userId).select("verified role");
+    if (!renter) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    if ((renter.role && renter.role !== "renter") || (req.user?.role && req.user.role !== "renter")) {
+      return res
+        .status(403)
+        .json({ success: false, code: "ROLE_NOT_ALLOWED", message: "Only renter accounts can create bookings." });
+    }
+    if (renter.verified !== true) {
       return res
         .status(403)
         .json({ success: false, code: "USER_NOT_VERIFIED", message: "Please verify your account to book." });

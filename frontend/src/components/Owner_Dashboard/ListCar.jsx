@@ -3,6 +3,7 @@ import stateCityMap from "../../assets/stateCityMap.json";
 import pincodePrefixMap from "../../assets/pincodePrefixMap.json";
 import carBrandData from "../../assets/carbrand.json";
 import cityAreaMap from "../../assets/cityAreaMap.json";
+import computeMaxPrice from "../../utils/pricePolicy";
 
 function ListCar({ onCarAdded, onClose }) {
   const [step, setStep] = useState(1);
@@ -237,6 +238,22 @@ function ListCar({ onCarAdded, onClose }) {
         );
         return;
       }
+
+      // NEW: enforce price cap
+      const max = Number(priceCaps?.max || 0);
+      const price = Number(carForm.pricePerDay);
+      if (max > 0 && price > max) {
+        setError(
+          `Price exceeds the allowed maximum for ${
+            carForm.brand === "Other" ? carForm.brandText : carForm.brand
+          } ${carForm.model === "Other" ? carForm.modelText : carForm.model} (${
+            carForm.transmission
+          }, ${carForm.seats}-seater, ${
+            carForm.year
+          }). Max allowed is ₹${max.toLocaleString("en-IN")}.`
+        );
+        return;
+      }
     }
 
     // Step 2 validation
@@ -319,8 +336,26 @@ function ListCar({ onCarAdded, onClose }) {
       return;
     }
 
-    setLoading(true);
+    // Re-check price cap on final submit
+    const brandName =
+      carForm.brand === "Other" ? carForm.brandText || "" : carForm.brand;
+    const modelName =
+      carForm.model === "Other" ? carForm.modelText || "" : carForm.model;
+    const caps = computeMaxPrice({
+      brand: brandName,
+      model: modelName,
+      transmission: carForm.transmission,
+      seats: carForm.seats,
+      year: carForm.year,
+    });
+    const max = Number(caps?.max || 0);
+    const price = Number(carForm.pricePerDay);
+    if (max > 0 && price > max) {
+      alert(`Price exceeds maximum allowed: ₹${max.toLocaleString("en-IN")}`);
+      return;
+    }
 
+    setLoading(true);
     try {
       const token = localStorage.getItem("token");
       const formData = new FormData();
@@ -408,20 +443,43 @@ function ListCar({ onCarAdded, onClose }) {
     }));
   };
 
+  // Compute price caps dynamically
+  const priceCaps = React.useMemo(() => {
+    const brandName =
+      carForm.brand === "Other" ? carForm.brandText || "" : carForm.brand;
+    const modelName =
+      carForm.model === "Other" ? carForm.modelText || "" : carForm.model;
+    return computeMaxPrice({
+      brand: brandName,
+      model: modelName,
+      transmission: carForm.transmission,
+      seats: carForm.seats,
+      year: carForm.year,
+    });
+  }, [
+    carForm.brand,
+    carForm.brandText,
+    carForm.model,
+    carForm.modelText,
+    carForm.transmission,
+    carForm.seats,
+    carForm.year,
+  ]);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <form
         onSubmit={step === 4 ? handleCarSubmit : handleNext}
-        className="bg-[#ecebee] px-8 pb-8 rounded-2xl shadow-2xl w-full max-w-lg space-y-5 max-h-[90vh] overflow-y-auto border border-[#e0dbe9] disabledscrollbar"
+        className="bg-[#ecebee] pb-8 rounded-2xl shadow-2xl w-full max-w-lg space-y-5 max-h-[90vh] overflow-y-auto border border-[#e0dbe9] disabledscrollbar"
       >
-        <div className="flex justify-between">
+        <div className="flex justify-between px-2">
           <div></div>
           <div>
             {/* Close Button */}
             <button
               type="button"
               onClick={onClose}
-              className="mt-2 ml-2 text-[#2F2240] bg-white rounded-full p-2 shadow hover:bg-[#f7f6fa] transition"
+              className="mt-2 ml-2 rounded-full p-2 hover:bg-[#f7f6fa] transition"
               aria-label="Close"
               style={{ zIndex: 10 }}
             >
@@ -443,85 +501,46 @@ function ListCar({ onCarAdded, onClose }) {
           </div>
         </div>
 
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-[#2F2240] tracking-wide">
-            List a New Car
-          </h2>
-          <span className="text-base text-[#3d3356] font-medium">
-            Step {step} of 4
-          </span>
-        </div>
+        <div className="mb-4 px-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-[#2F2240] tracking-wide">
+              List a New Car
+            </h2>
+            <span className="text-base text-[#3d3356] font-medium">
+              Step {step} of 4
+            </span>
+          </div>
 
-        {step === 1 && (
-          <>
-            {/* Brand Dropdown */}
-            <div className="mb-4 relative" ref={brandDropdownRef}>
-              <label className="block mb-1 font-semibold text-[#3d3356]">
-                Car Brand <span className="text-red-500">*</span>
-              </label>
-              <div
-                className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
-                  showBrandDropdown ? "ring-2 ring-[#2F2240]" : ""
-                }`}
-                onClick={() => setShowBrandDropdown((v) => !v)}
-                tabIndex={0}
-              >
-                {carForm.brandText && carForm.brand === "Other"
-                  ? carForm.brandText
-                  : carForm.brand || "Select Brand"}
-              </div>
-              {showBrandDropdown && (
-                <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border-b focus:outline-none focus:ring-2 focus:ring-[#2F2240] rounded-t-lg"
-                    placeholder="Search brand"
-                    value={brandFilter}
-                    onChange={(e) => setBrandFilter(e.target.value)}
-                    autoFocus
-                  />
-                  <ul className="max-h-48 overflow-y-auto">
-                    {filteredBrands.length === 0 && (
-                      <li
-                        className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
-                        onClick={() => {
-                          setCarForm((prev) => ({
-                            ...prev,
-                            brand: "Other",
-                            model: "",
-                            brandText: "",
-                            modelText: "",
-                          }));
-                          setShowBrandDropdown(false);
-                          setBrandFilter("");
-                          setModelFilter("");
-                        }}
-                      >
-                        Other
-                      </li>
-                    )}
-                    {filteredBrands.map((brand) => (
-                      <li
-                        key={brand}
-                        className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
-                        onClick={() => {
-                          setCarForm((prev) => ({
-                            ...prev,
-                            brand,
-                            model: "",
-                            brandText: "",
-                            modelText: "",
-                          }));
-                          setShowBrandDropdown(false);
-                          setBrandFilter("");
-                          setModelFilter("");
-                        }}
-                      >
-                        {brand}
-                      </li>
-                    ))}
-                    {filteredBrands.length > 0 &&
-                      !filteredBrands.includes("Other") && (
+          {step === 1 && (
+            <>
+              {/* Brand Dropdown */}
+              <div className="mb-4 relative" ref={brandDropdownRef}>
+                <label className="block mb-1 font-semibold text-[#3d3356]">
+                  Car Brand <span className="text-red-500">*</span>
+                </label>
+                <div
+                  className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
+                    showBrandDropdown ? "ring-2 ring-[#2F2240]" : ""
+                  }`}
+                  onClick={() => setShowBrandDropdown((v) => !v)}
+                  tabIndex={0}
+                >
+                  {carForm.brandText && carForm.brand === "Other"
+                    ? carForm.brandText
+                    : carForm.brand || "Select Brand"}
+                </div>
+                {showBrandDropdown && (
+                  <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border-b focus:outline-none focus:ring-2 focus:ring-[#2F2240] rounded-t-lg"
+                      placeholder="Search brand"
+                      value={brandFilter}
+                      onChange={(e) => setBrandFilter(e.target.value)}
+                      autoFocus
+                    />
+                    <ul className="max-h-48 overflow-y-auto">
+                      {filteredBrands.length === 0 && (
                         <li
                           className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
                           onClick={() => {
@@ -540,99 +559,105 @@ function ListCar({ onCarAdded, onClose }) {
                           Other
                         </li>
                       )}
-                  </ul>
-                </div>
-              )}
-              {carForm.brand === "Other" && (
-                <input
-                  type="text"
-                  name="brandText"
-                  placeholder="Enter brand"
-                  className="w-full border px-4 py-2 rounded-lg mt-2 bg-[#f7f6fa] font-medium"
-                  value={carForm.brandText || ""}
-                  onChange={(e) =>
-                    setCarForm((prev) => ({
-                      ...prev,
-                      brand: "Other",
-                      brandText: e.target.value,
-                    }))
-                  }
-                  required
-                />
-              )}
-            </div>
-
-            {/* Model Dropdown */}
-            <div className="mb-4 relative" ref={modelDropdownRef}>
-              <label className="block mb-1 font-semibold text-[#3d3356]">
-                Car Model <span className="text-red-500">*</span>
-              </label>
-              <div
-                className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
-                  showModelDropdown ? "ring-2 ring-[#2F2240]" : ""
-                } ${
-                  !carForm.brand || carForm.brand === "Other"
-                    ? "opacity-50 pointer-events-none"
-                    : ""
-                }`}
-                onClick={() => {
-                  if (carForm.brand && carForm.brand !== "Other")
-                    setShowModelDropdown((v) => !v);
-                }}
-                tabIndex={0}
-              >
-                {carForm.modelText && carForm.model === "Other"
-                  ? carForm.modelText
-                  : carForm.model || "Select Model"}
-              </div>
-              {showModelDropdown &&
-                carForm.brand &&
-                carForm.brand !== "Other" && (
-                  <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border-b focus:outline-none focus:ring-2 focus:ring-[#2F2240] rounded-t-lg"
-                      placeholder="Search model"
-                      value={modelFilter}
-                      onChange={(e) => setModelFilter(e.target.value)}
-                      autoFocus
-                    />
-                    <ul className="max-h-48 overflow-y-auto">
-                      {filteredModels.length === 0 && (
+                      {filteredBrands.map((brand) => (
                         <li
+                          key={brand}
                           className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
                           onClick={() => {
                             setCarForm((prev) => ({
                               ...prev,
-                              model: "Other",
+                              brand,
+                              model: "",
+                              brandText: "",
                               modelText: "",
                             }));
-                            setShowModelDropdown(false);
+                            setShowBrandDropdown(false);
+                            setBrandFilter("");
                             setModelFilter("");
                           }}
                         >
-                          Other
-                        </li>
-                      )}
-                      {filteredModels.map((model) => (
-                        <li
-                          key={model}
-                          className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
-                          onClick={() => {
-                            setCarForm((prev) => ({
-                              ...prev,
-                              model,
-                              modelText: "",
-                            }));
-                            setShowModelDropdown(false);
-                            setModelFilter("");
-                          }}
-                        >
-                          {model}
+                          {brand}
                         </li>
                       ))}
-                      {filteredModels.length > 0 &&
-                        !filteredModels.includes("Other") && (
+                      {filteredBrands.length > 0 &&
+                        !filteredBrands.includes("Other") && (
+                          <li
+                            className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
+                            onClick={() => {
+                              setCarForm((prev) => ({
+                                ...prev,
+                                brand: "Other",
+                                model: "",
+                                brandText: "",
+                                modelText: "",
+                              }));
+                              setShowBrandDropdown(false);
+                              setBrandFilter("");
+                              setModelFilter("");
+                            }}
+                          >
+                            Other
+                          </li>
+                        )}
+                    </ul>
+                  </div>
+                )}
+                {carForm.brand === "Other" && (
+                  <input
+                    type="text"
+                    name="brandText"
+                    placeholder="Enter brand"
+                    className="w-full border px-4 py-2 rounded-lg mt-2 bg-[#f7f6fa] font-medium"
+                    value={carForm.brandText || ""}
+                    onChange={(e) =>
+                      setCarForm((prev) => ({
+                        ...prev,
+                        brand: "Other",
+                        brandText: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+                )}
+              </div>
+
+              {/* Model Dropdown */}
+              <div className="mb-4 relative" ref={modelDropdownRef}>
+                <label className="block mb-1 font-semibold text-[#3d3356]">
+                  Car Model <span className="text-red-500">*</span>
+                </label>
+                <div
+                  className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
+                    showModelDropdown ? "ring-2 ring-[#2F2240]" : ""
+                  } ${
+                    !carForm.brand || carForm.brand === "Other"
+                      ? "opacity-50 pointer-events-none"
+                      : ""
+                  }`}
+                  onClick={() => {
+                    if (carForm.brand && carForm.brand !== "Other")
+                      setShowModelDropdown((v) => !v);
+                  }}
+                  tabIndex={0}
+                >
+                  {carForm.modelText && carForm.model === "Other"
+                    ? carForm.modelText
+                    : carForm.model || "Select Model"}
+                </div>
+                {showModelDropdown &&
+                  carForm.brand &&
+                  carForm.brand !== "Other" && (
+                    <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border-b focus:outline-none focus:ring-2 focus:ring-[#2F2240] rounded-t-lg"
+                        placeholder="Search model"
+                        value={modelFilter}
+                        onChange={(e) => setModelFilter(e.target.value)}
+                        autoFocus
+                      />
+                      <ul className="max-h-48 overflow-y-auto">
+                        {filteredModels.length === 0 && (
                           <li
                             className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
                             onClick={() => {
@@ -648,431 +673,234 @@ function ListCar({ onCarAdded, onClose }) {
                             Other
                           </li>
                         )}
+                        {filteredModels.map((model) => (
+                          <li
+                            key={model}
+                            className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
+                            onClick={() => {
+                              setCarForm((prev) => ({
+                                ...prev,
+                                model,
+                                modelText: "",
+                              }));
+                              setShowModelDropdown(false);
+                              setModelFilter("");
+                            }}
+                          >
+                            {model}
+                          </li>
+                        ))}
+                        {filteredModels.length > 0 &&
+                          !filteredModels.includes("Other") && (
+                            <li
+                              className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
+                              onClick={() => {
+                                setCarForm((prev) => ({
+                                  ...prev,
+                                  model: "Other",
+                                  modelText: "",
+                                }));
+                                setShowModelDropdown(false);
+                                setModelFilter("");
+                              }}
+                            >
+                              Other
+                            </li>
+                          )}
+                      </ul>
+                    </div>
+                  )}
+                {(carForm.model === "Other" || carForm.brand === "Other") && (
+                  <input
+                    type="text"
+                    name="modelText"
+                    placeholder="Enter model"
+                    className="w-full border px-4 py-2 rounded-lg mt-2 bg-[#f7f6fa] font-medium"
+                    value={carForm.modelText || ""}
+                    onChange={(e) =>
+                      setCarForm((prev) => ({
+                        ...prev,
+                        model: "Other",
+                        modelText: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+                )}
+              </div>
+
+              <input
+                type="text"
+                name="title"
+                value={carForm.title}
+                onChange={handleCarFormChange}
+                required
+                placeholder="Title"
+                className="w-full border px-4 py-2 rounded mb-2"
+              />
+              <input
+                type="text"
+                name="carnumber"
+                value={carForm.carnumber}
+                onChange={handleCarFormChange}
+                required
+                className="w-full border px-4 py-2 rounded mb-2"
+                placeholder="Car Number (e.g. MH01SG2829)"
+                pattern="^[A-Z]{2}\d{2}[A-Z]{1,2}\d{4}$"
+                title="Format: MH01SG2829"
+              />
+              <input
+                type="text"
+                name="year"
+                value={carForm.year}
+                onChange={handleYearChange}
+                required
+                placeholder="Year"
+                className="w-full border px-4 py-2 rounded mb-2"
+                maxLength={4}
+              />
+              <input
+                type="number"
+                name="pricePerDay"
+                value={carForm.pricePerDay}
+                onChange={handleCarFormChange}
+                required
+                placeholder="Price Per Day (₹)"
+                className="w-full border px-4 py-2 rounded mb-1" // mb-1 (tighter, we add helper below)
+              />
+              {/* Helper: show max allowed */}
+              {Number(carForm.pricePerDay) > 0 && priceCaps?.max ? (
+                <div className="text-xs text-gray-600 mb-2">
+                  Max allowed for this car:{" "}
+                  <b>₹{Number(priceCaps.max).toLocaleString("en-IN")}</b>
+                  {priceCaps.recommended ? (
+                    <>
+                      {" "}
+                      • Recommended: ₹
+                      {Number(priceCaps.recommended).toLocaleString("en-IN")}
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* Fuel Type Dropdown */}
+              <div className="mb-4 relative">
+                <label className="block mb-1 font-semibold text-[#3d3356]">
+                  Fuel Type <span className="text-red-500">*</span>
+                </label>
+                <div
+                  className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
+                    showFuelDropdown ? "ring-2 ring-[#2F2240]" : ""
+                  }`}
+                  onClick={() => setShowFuelDropdown((v) => !v)}
+                  tabIndex={0}
+                >
+                  {carForm.fuelType || "Select Fuel Type"}
+                </div>
+                {showFuelDropdown && (
+                  <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
+                    <ul className="max-h-48 overflow-y-auto">
+                      {fuelOptions.map((fuel) => (
+                        <li
+                          key={fuel}
+                          className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
+                          onClick={() => {
+                            setCarForm((prev) => ({
+                              ...prev,
+                              fuelType: fuel,
+                            }));
+                            setShowFuelDropdown(false);
+                          }}
+                        >
+                          {fuel}
+                        </li>
+                      ))}
                     </ul>
                   </div>
                 )}
-              {(carForm.model === "Other" || carForm.brand === "Other") && (
-                <input
-                  type="text"
-                  name="modelText"
-                  placeholder="Enter model"
-                  className="w-full border px-4 py-2 rounded-lg mt-2 bg-[#f7f6fa] font-medium"
-                  value={carForm.modelText || ""}
-                  onChange={(e) =>
-                    setCarForm((prev) => ({
-                      ...prev,
-                      model: "Other",
-                      modelText: e.target.value,
-                    }))
-                  }
-                  required
-                />
-              )}
-            </div>
-
-            <input
-              type="text"
-              name="title"
-              value={carForm.title}
-              onChange={handleCarFormChange}
-              required
-              placeholder="Title"
-              className="w-full border px-4 py-2 rounded mb-2"
-            />
-            <input
-              type="text"
-              name="carnumber"
-              value={carForm.carnumber}
-              onChange={handleCarFormChange}
-              required
-              className="w-full border px-4 py-2 rounded mb-2"
-              placeholder="Car Number (e.g. MH01SG2829)"
-              pattern="^[A-Z]{2}\d{2}[A-Z]{1,2}\d{4}$"
-              title="Format: MH01SG2829"
-            />
-            <input
-              type="text"
-              name="year"
-              value={carForm.year}
-              onChange={handleYearChange}
-              required
-              placeholder="Year"
-              className="w-full border px-4 py-2 rounded mb-2"
-              maxLength={4}
-            />
-            <input
-              type="number"
-              name="pricePerDay"
-              value={carForm.pricePerDay}
-              onChange={handleCarFormChange}
-              required
-              placeholder="Price Per Day (₹)"
-              className="w-full border px-4 py-2 rounded mb-2"
-            />
-
-            {/* Fuel Type Dropdown */}
-            <div className="mb-4 relative">
-              <label className="block mb-1 font-semibold text-[#3d3356]">
-                Fuel Type <span className="text-red-500">*</span>
-              </label>
-              <div
-                className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
-                  showFuelDropdown ? "ring-2 ring-[#2F2240]" : ""
-                }`}
-                onClick={() => setShowFuelDropdown((v) => !v)}
-                tabIndex={0}
-              >
-                {carForm.fuelType || "Select Fuel Type"}
               </div>
-              {showFuelDropdown && (
-                <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
-                  <ul className="max-h-48 overflow-y-auto">
-                    {fuelOptions.map((fuel) => (
-                      <li
-                        key={fuel}
-                        className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
-                        onClick={() => {
-                          setCarForm((prev) => ({
-                            ...prev,
-                            fuelType: fuel,
-                          }));
-                          setShowFuelDropdown(false);
-                        }}
-                      >
-                        {fuel}
-                      </li>
-                    ))}
-                  </ul>
+
+              {/* Transmission Dropdown */}
+              <div className="mb-4 relative">
+                <label className="block mb-1 font-semibold text-[#3d3356]">
+                  Transmission <span className="text-red-500">*</span>
+                </label>
+                <div
+                  className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
+                    showTransmissionDropdown ? "ring-2 ring-[#2F2240]" : ""
+                  }`}
+                  onClick={() => setShowTransmissionDropdown((v) => !v)}
+                  tabIndex={0}
+                >
+                  {carForm.transmission || "Select Transmission"}
+                </div>
+                {showTransmissionDropdown && (
+                  <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
+                    <ul className="max-h-48 overflow-y-auto">
+                      {transmissionOptions.map((trans) => (
+                        <li
+                          key={trans}
+                          className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
+                          onClick={() => {
+                            setCarForm((prev) => ({
+                              ...prev,
+                              transmission: trans,
+                            }));
+                            setShowTransmissionDropdown(false);
+                          }}
+                        >
+                          {trans}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Seating Capacity Dropdown */}
+              <div className="mb-4 relative">
+                <label className="block mb-1 font-semibold text-[#3d3356]">
+                  Seating Capacity <span className="text-red-500">*</span>
+                </label>
+                <div
+                  className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
+                    showAreaDropdown ? "ring-2 ring-[#2F2240]" : ""
+                  }`}
+                  onClick={() => setShowAreaDropdown((v) => !v)}
+                  tabIndex={0}
+                >
+                  {carForm.seats || "Select Seating Capacity"}
+                </div>
+                {showAreaDropdown && (
+                  <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
+                    <ul className="max-h-48 overflow-y-auto">
+                      {["4", "6", "7"].map((seat) => (
+                        <li
+                          key={seat}
+                          className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
+                          onClick={() => {
+                            setCarForm((prev) => ({
+                              ...prev,
+                              seats: seat,
+                            }));
+                            setShowAreaDropdown(false);
+                          }}
+                        >
+                          {seat}-Seater Car
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Error message */}
+              {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2 text-center font-semibold shadow">
+                  {error}
                 </div>
               )}
-            </div>
 
-            {/* Transmission Dropdown */}
-            <div className="mb-4 relative">
-              <label className="block mb-1 font-semibold text-[#3d3356]">
-                Transmission <span className="text-red-500">*</span>
-              </label>
-              <div
-                className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
-                  showTransmissionDropdown ? "ring-2 ring-[#2F2240]" : ""
-                }`}
-                onClick={() => setShowTransmissionDropdown((v) => !v)}
-                tabIndex={0}
-              >
-                {carForm.transmission || "Select Transmission"}
-              </div>
-              {showTransmissionDropdown && (
-                <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
-                  <ul className="max-h-48 overflow-y-auto">
-                    {transmissionOptions.map((trans) => (
-                      <li
-                        key={trans}
-                        className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
-                        onClick={() => {
-                          setCarForm((prev) => ({
-                            ...prev,
-                            transmission: trans,
-                          }));
-                          setShowTransmissionDropdown(false);
-                        }}
-                      >
-                        {trans}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Seating Capacity Dropdown */}
-            <div className="mb-4 relative">
-              <label className="block mb-1 font-semibold text-[#3d3356]">
-                Seating Capacity <span className="text-red-500">*</span>
-              </label>
-              <div
-                className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
-                  showAreaDropdown ? "ring-2 ring-[#2F2240]" : ""
-                }`}
-                onClick={() => setShowAreaDropdown((v) => !v)}
-                tabIndex={0}
-              >
-                {carForm.seats || "Select Seating Capacity"}
-              </div>
-              {showAreaDropdown && (
-                <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
-                  <ul className="max-h-48 overflow-y-auto">
-                    {["4", "6", "7"].map((seat) => (
-                      <li
-                        key={seat}
-                        className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
-                        onClick={() => {
-                          setCarForm((prev) => ({
-                            ...prev,
-                            seats: seat,
-                          }));
-                          setShowAreaDropdown(false);
-                        }}
-                      >
-                        {seat}-Seater Car
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Error message */}
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2 text-center font-semibold shadow">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="button"
-              className="bg-[#2F2240] text-white px-6 py-2 rounded font-semibold hover:bg-[#2F1440] transition"
-              onClick={handleNext}
-            >
-              Next
-            </button>
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            {/* State Dropdown */}
-            <div className="mb-4 relative" ref={stateDropdownRef}>
-              <label className="block mb-1 font-semibold text-[#3d3356]">
-                State <span className="text-red-500">*</span>
-              </label>
-              <div
-                className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
-                  showStateDropdown ? "ring-2 ring-[#2F2240]" : ""
-                }`}
-                onClick={() => setShowStateDropdown((v) => !v)}
-                tabIndex={0}
-              >
-                {carForm.location.state || "Select State"}
-              </div>
-              {showStateDropdown && (
-                <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border-b focus:outline-none focus:ring-2 focus:ring-[#2F2240] rounded-t-lg"
-                    placeholder="Search state"
-                    value={stateFilter}
-                    onChange={(e) => setStateFilter(e.target.value)}
-                    autoFocus
-                  />
-                  <ul className="max-h-48 overflow-y-auto">
-                    {filteredStates.length === 0 && (
-                      <li className="px-4 py-2 text-gray-400 font-medium">
-                        No state found
-                      </li>
-                    )}
-                    {filteredStates.map((state) => (
-                      <li
-                        key={state}
-                        className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
-                        onClick={() => {
-                          setCarForm((prev) => ({
-                            ...prev,
-                            location: {
-                              ...prev.location,
-                              state,
-                              city: "",
-                            },
-                          }));
-                          setShowStateDropdown(false);
-                          setStateFilter("");
-                          setCityFilter("");
-                        }}
-                      >
-                        {state}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* City Dropdown */}
-            <div className="mb-4 relative" ref={cityDropdownRef}>
-              <label className="block mb-1 font-semibold text-[#3d3356]">
-                City <span className="text-red-500">*</span>
-              </label>
-              <div
-                className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
-                  showCityDropdown ? "ring-2 ring-[#2F2240]" : ""
-                } ${
-                  !carForm.location.state
-                    ? "opacity-50 pointer-events-none"
-                    : ""
-                }`}
-                onClick={() => {
-                  if (carForm.location.state) setShowCityDropdown((v) => !v);
-                }}
-                tabIndex={0}
-              >
-                {carForm.location.city || "Select City"}
-              </div>
-              {showCityDropdown && carForm.location.state && (
-                <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border-b focus:outline-none focus:ring-2 focus:ring-[#2F2240] rounded-t-lg"
-                    placeholder="Search city"
-                    value={cityFilter}
-                    onChange={(e) => setCityFilter(e.target.value)}
-                    autoFocus
-                  />
-                  <ul className="max-h-48 overflow-y-auto">
-                    {filteredCities.length === 0 && (
-                      <li className="px-4 py-2 text-gray-400 font-medium">
-                        No city found
-                      </li>
-                    )}
-                    {filteredCities.map((city) => (
-                      <li
-                        key={city}
-                        className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
-                        onClick={() => {
-                          setCarForm((prev) => ({
-                            ...prev,
-                            location: {
-                              ...prev.location,
-                              city,
-                            },
-                          }));
-                          setShowCityDropdown(false);
-                          setCityFilter("");
-                        }}
-                      >
-                        {city}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Area Dropdown */}
-            <div className="mb-4 relative" ref={areaDropdownRef}>
-              <label className="block mb-1 font-semibold text-[#3d3356]">
-                Area <span className="text-red-500">*</span>
-              </label>
-              <div
-                className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
-                  showAreaDropdown ? "ring-2 ring-[#2F2240]" : ""
-                } ${
-                  !carForm.location.city ? "opacity-50 pointer-events-none" : ""
-                }`}
-                onClick={() => {
-                  if (carForm.location.city) setShowAreaDropdown((v) => !v);
-                }}
-                tabIndex={0}
-              >
-                {carForm.location.area || "Select Area"}
-              </div>
-              {showAreaDropdown && carForm.location.city && (
-                <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border-b focus:outline-none focus:ring-2 focus:ring-[#2F2240] rounded-t-lg"
-                    placeholder="Search area"
-                    value={areaFilter}
-                    onChange={(e) => setAreaFilter(e.target.value)}
-                    autoFocus
-                  />
-                  <ul className="max-h-48 overflow-y-auto">
-                    {filteredAreas.length === 0 && (
-                      <li className="px-4 py-2 text-gray-400 font-medium">
-                        No area found
-                      </li>
-                    )}
-                    {filteredAreas.map((area) => (
-                      <li
-                        key={area}
-                        className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
-                        onClick={() => {
-                          setCarForm((prev) => ({
-                            ...prev,
-                            location: {
-                              ...prev.location,
-                              area,
-                            },
-                          }));
-                          setShowAreaDropdown(false);
-                          setAreaFilter("");
-                        }}
-                      >
-                        {area}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            <input
-              type="text"
-              name="country"
-              value={carForm.location.country}
-              onChange={handleCarFormChange}
-              placeholder="Country"
-              className="w-full border px-4 py-2 rounded mb-2 bg-gray-200"
-              disabled
-            />
-            <input
-              type="text"
-              name="addressLine"
-              value={carForm.location.addressLine}
-              onChange={handleCarFormChange}
-              placeholder="Address Line"
-              className="w-full border px-4 py-2 rounded mb-2"
-            />
-            <input
-              type="number"
-              name="pincode"
-              value={carForm.location.pincode}
-              onChange={handlePinCodeChange}
-              placeholder={
-                pincodePrefix
-                  ? `Pincode (starts with ${pincodePrefix})`
-                  : "Pincode"
-              }
-              maxLength={6}
-              className="w-full border px-4 py-2 rounded mb-2"
-              pattern="^\d{6}$"
-              title="Enter 6 digit pincode"
-              required
-            />
-
-            <input
-              type="text"
-              name="digipin"
-              pattern="^[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{4}$"
-              className="w-full border px-4 py-2 rounded mb-2"
-              value={carForm.location.digipin || ""}
-              onChange={handleDigipinChange}
-              placeholder="Digipin (optional, format: XXX-XXX-XXXX)"
-            />
-
-            {/* Error message */}
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2 text-center font-semibold shadow">
-                {error}
-              </div>
-            )}
-
-            <div className="flex justify-between">
-              <button
-                type="button"
-                className="px-4 py-2 rounded bg-gray-300"
-                onClick={handlePrev}
-              >
-                Back
-              </button>
               <button
                 type="button"
                 className="bg-[#2F2240] text-white px-6 py-2 rounded font-semibold hover:bg-[#2F1440] transition"
@@ -1080,158 +908,407 @@ function ListCar({ onCarAdded, onClose }) {
               >
                 Next
               </button>
-            </div>
-          </>
-        )}
+            </>
+          )}
 
-        {step === 3 && (
-          <>
-            <label className="block mb-1 font-medium">
-              Upload Car Images (Max 5)
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleCarImage}
-              className="w-full"
-              required
-            />
-            <div className="flex gap-2 mt-2 flex-wrap">
-              {carForm.images.map((img, idx) => (
-                <div key={idx} className="relative group">
-                  <img
-                    src={URL.createObjectURL(img)}
-                    alt="Car"
-                    className="w-16 h-12 object-cover rounded border"
+          {step === 2 && (
+            <>
+              {/* State Dropdown */}
+              <div className="mb-4 relative" ref={stateDropdownRef}>
+                <label className="block mb-1 font-semibold text-[#3d3356]">
+                  State <span className="text-red-500">*</span>
+                </label>
+                <div
+                  className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
+                    showStateDropdown ? "ring-2 ring-[#2F2240]" : ""
+                  }`}
+                  onClick={() => setShowStateDropdown((v) => !v)}
+                  tabIndex={0}
+                >
+                  {carForm.location.state || "Select State"}
+                </div>
+                {showStateDropdown && (
+                  <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border-b focus:outline-none focus:ring-2 focus:ring-[#2F2240] rounded-t-lg"
+                      placeholder="Search state"
+                      value={stateFilter}
+                      onChange={(e) => setStateFilter(e.target.value)}
+                      autoFocus
+                    />
+                    <ul className="max-h-48 overflow-y-auto">
+                      {filteredStates.length === 0 && (
+                        <li className="px-4 py-2 text-gray-400 font-medium">
+                          No state found
+                        </li>
+                      )}
+                      {filteredStates.map((state) => (
+                        <li
+                          key={state}
+                          className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
+                          onClick={() => {
+                            setCarForm((prev) => ({
+                              ...prev,
+                              location: {
+                                ...prev.location,
+                                state,
+                                city: "",
+                              },
+                            }));
+                            setShowStateDropdown(false);
+                            setStateFilter("");
+                            setCityFilter("");
+                          }}
+                        >
+                          {state}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* City Dropdown */}
+              <div className="mb-4 relative" ref={cityDropdownRef}>
+                <label className="block mb-1 font-semibold text-[#3d3356]">
+                  City <span className="text-red-500">*</span>
+                </label>
+                <div
+                  className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
+                    showCityDropdown ? "ring-2 ring-[#2F2240]" : ""
+                  } ${
+                    !carForm.location.state
+                      ? "opacity-50 pointer-events-none"
+                      : ""
+                  }`}
+                  onClick={() => {
+                    if (carForm.location.state) setShowCityDropdown((v) => !v);
+                  }}
+                  tabIndex={0}
+                >
+                  {carForm.location.city || "Select City"}
+                </div>
+                {showCityDropdown && carForm.location.state && (
+                  <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border-b focus:outline-none focus:ring-2 focus:ring-[#2F2240] rounded-t-lg"
+                      placeholder="Search city"
+                      value={cityFilter}
+                      onChange={(e) => setCityFilter(e.target.value)}
+                      autoFocus
+                    />
+                    <ul className="max-h-48 overflow-y-auto">
+                      {filteredCities.length === 0 && (
+                        <li className="px-4 py-2 text-gray-400 font-medium">
+                          No city found
+                        </li>
+                      )}
+                      {filteredCities.map((city) => (
+                        <li
+                          key={city}
+                          className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
+                          onClick={() => {
+                            setCarForm((prev) => ({
+                              ...prev,
+                              location: {
+                                ...prev.location,
+                                city,
+                              },
+                            }));
+                            setShowCityDropdown(false);
+                            setCityFilter("");
+                          }}
+                        >
+                          {city}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Area Dropdown */}
+              <div className="mb-4 relative" ref={areaDropdownRef}>
+                <label className="block mb-1 font-semibold text-[#3d3356]">
+                  Area <span className="text-red-500">*</span>
+                </label>
+                <div
+                  className={`w-full border px-4 py-2 rounded-lg bg-[#f7f6fa] cursor-pointer transition font-medium ${
+                    showAreaDropdown ? "ring-2 ring-[#2F2240]" : ""
+                  } ${
+                    !carForm.location.city
+                      ? "opacity-50 pointer-events-none"
+                      : ""
+                  }`}
+                  onClick={() => {
+                    if (carForm.location.city) setShowAreaDropdown((v) => !v);
+                  }}
+                  tabIndex={0}
+                >
+                  {carForm.location.area || "Select Area"}
+                </div>
+                {showAreaDropdown && carForm.location.city && (
+                  <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1">
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border-b focus:outline-none focus:ring-2 focus:ring-[#2F2240] rounded-t-lg"
+                      placeholder="Search area"
+                      value={areaFilter}
+                      onChange={(e) => setAreaFilter(e.target.value)}
+                      autoFocus
+                    />
+                    <ul className="max-h-48 overflow-y-auto">
+                      {filteredAreas.length === 0 && (
+                        <li className="px-4 py-2 text-gray-400 font-medium">
+                          No area found
+                        </li>
+                      )}
+                      {filteredAreas.map((area) => (
+                        <li
+                          key={area}
+                          className="px-4 py-2 cursor-pointer hover:bg-[#eceaf6] font-medium"
+                          onClick={() => {
+                            setCarForm((prev) => ({
+                              ...prev,
+                              location: {
+                                ...prev.location,
+                                area,
+                              },
+                            }));
+                            setShowAreaDropdown(false);
+                            setAreaFilter("");
+                          }}
+                        >
+                          {area}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <input
+                type="text"
+                name="country"
+                value={carForm.location.country}
+                onChange={handleCarFormChange}
+                placeholder="Country"
+                className="w-full border px-4 py-2 rounded mb-2 bg-gray-200"
+                disabled
+              />
+              <input
+                type="text"
+                name="addressLine"
+                value={carForm.location.addressLine}
+                onChange={handleCarFormChange}
+                placeholder="Address Line"
+                className="w-full border px-4 py-2 rounded mb-2"
+              />
+              <input
+                type="number"
+                name="pincode"
+                value={carForm.location.pincode}
+                onChange={handlePinCodeChange}
+                placeholder={
+                  pincodePrefix
+                    ? `Pincode (starts with ${pincodePrefix})`
+                    : "Pincode"
+                }
+                maxLength={6}
+                className="w-full border px-4 py-2 rounded mb-2"
+                pattern="^\d{6}$"
+                title="Enter 6 digit pincode"
+                required
+              />
+
+              <input
+                type="text"
+                name="digipin"
+                pattern="^[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{4}$"
+                className="w-full border px-4 py-2 rounded mb-2"
+                value={carForm.location.digipin || ""}
+                onChange={handleDigipinChange}
+                placeholder="Digipin (optional, format: XXX-XXX-XXXX)"
+              />
+
+              {/* Error message */}
+              {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2 text-center font-semibold shadow">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex justify-between">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-gray-300"
+                  onClick={handlePrev}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  className="bg-[#2F2240] text-white px-6 py-2 rounded font-semibold hover:bg-[#2F1440] transition"
+                  onClick={handleNext}
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <label className="block mb-1 font-medium">
+                Upload Car Images (Max 5)
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleCarImage}
+                className="w-full"
+                required
+              />
+              <div className="flex gap-2 mt-2 flex-wrap">
+                {carForm.images.map((img, idx) => (
+                  <div key={idx} className="relative group">
+                    <img
+                      src={URL.createObjectURL(img)}
+                      alt="Car"
+                      className="w-16 h-12 object-cover rounded border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(idx)}
+                      className="absolute top-[-6px] right-[-6px] bg-red-500 text-white text-xs rounded-full px-1"
+                    >
+                      x
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <label className="block mt-4 font-medium">Upload Documents</label>
+              {["rc", "insurance", "pollution", "signature"].map((doc) => (
+                <div key={doc}>
+                  <label className="block mb-1 font-medium">
+                    {doc} Document
+                  </label>
+                  <input
+                    key={doc}
+                    type="file"
+                    name={doc}
+                    accept="application/pdf,image/*"
+                    onChange={handleDocumentUpload}
+                    className="w-full"
+                    required
                   />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(idx)}
-                    className="absolute top-[-6px] right-[-6px] bg-red-500 text-white text-xs rounded-full px-1"
-                  >
-                    x
-                  </button>
                 </div>
               ))}
-            </div>
 
-            <label className="block mt-4 font-medium">Upload Documents</label>
-            {["rc", "insurance", "pollution", "signature"].map((doc) => (
-              <div key={doc}>
-                <label className="block mb-1 font-medium">{doc} Document</label>
-                <input
-                  key={doc}
-                  type="file"
-                  name={doc}
-                  accept="application/pdf,image/*"
-                  onChange={handleDocumentUpload}
-                  className="w-full"
-                  required
-                />
+              {/* Error message */}
+              {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2 text-center font-semibold shadow">
+                  {error}
+                </div>
+              )}
+              <div className="flex justify-between">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-gray-300"
+                  onClick={handlePrev}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  className="bg-[#2F2240] text-white px-6 py-2 rounded font-semibold hover:[#2F1440] transition"
+                  onClick={handleNext}
+                >
+                  Next
+                </button>
               </div>
-            ))}
+            </>
+          )}
 
-            {/* Error message */}
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2 text-center font-semibold shadow">
-                {error}
+          {step === 4 && (
+            <>
+              <textarea
+                name="description"
+                value={carForm.description}
+                onChange={handleCarFormChange}
+                rows={4}
+                className="w-full border px-4 py-2 rounded"
+                placeholder="Write something about your car (features, condition, rules)"
+                required
+              />
+
+              {/* GPS Notice and Terms */}
+              <div className="bg-yellow-50 border border-yellow-300 text-yellow-900 px-4 py-3 rounded mb-3 mt-4 text-sm">
+                <strong className="block mb-1">
+                  Please install GPS in your car to avoid location and security
+                  issues.
+                </strong>
+                If you have not installed a GPS device,{" "}
+                <a
+                  href="https://www.google.com/search?q=gps+installation+for+car"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-blue-700"
+                >
+                  click here to find GPS installation services
+                </a>
+                .
+                <div className="mt-2">
+                  <input
+                    type="checkbox"
+                    id="agreeTerms"
+                    required
+                    className="mr-2"
+                  />
+                  <label htmlFor="agreeTerms">
+                    I agree with the{" "}
+                    <a
+                      href="/terms-and-conditions"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-blue-700"
+                    >
+                      terms and conditions
+                    </a>{" "}
+                    and confirm that my car has a GPS device installed. If not,
+                    I will not list my car.
+                  </label>
+                </div>
               </div>
-            )}
-            <div className="flex justify-between">
-              <button
-                type="button"
-                className="px-4 py-2 rounded bg-gray-300"
-                onClick={handlePrev}
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                className="bg-[#2F2240] text-white px-6 py-2 rounded font-semibold hover:[#2F1440] transition"
-                onClick={handleNext}
-              >
-                Next
-              </button>
-            </div>
-          </>
-        )}
 
-        {step === 4 && (
-          <>
-            <textarea
-              name="description"
-              value={carForm.description}
-              onChange={handleCarFormChange}
-              rows={4}
-              className="w-full border px-4 py-2 rounded"
-              placeholder="Write something about your car (features, condition, rules)"
-              required
-            />
-
-            {/* GPS Notice and Terms */}
-            <div className="bg-yellow-50 border border-yellow-300 text-yellow-900 px-4 py-3 rounded mb-3 mt-4 text-sm">
-              <strong className="block mb-1">
-                Please install GPS in your car to avoid location and security
-                issues.
-              </strong>
-              If you have not installed a GPS device,{" "}
-              <a
-                href="https://www.google.com/search?q=gps+installation+for+car"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline text-blue-700"
-              >
-                click here to find GPS installation services
-              </a>
-              .
-              <div className="mt-2">
-                <input
-                  type="checkbox"
-                  id="agreeTerms"
-                  required
-                  className="mr-2"
-                />
-                <label htmlFor="agreeTerms">
-                  I agree with the{" "}
-                  <a
-                    href="/terms-and-conditions"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline text-blue-700"
-                  >
-                    terms and conditions
-                  </a>{" "}
-                  and confirm that my car has a GPS device installed. If not, I
-                  will not list my car.
-                </label>
+              {/* Error message */}
+              {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2 text-center font-semibold shadow">
+                  {error}
+                </div>
+              )}
+              <div className="flex justify-between pt-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-gray-300"
+                  onClick={handlePrev}>
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-green-600 text-white px-6 py-2 rounded font-semibold hover:bg-green-700 transition"
+                >
+                  {loading ? "Listing..." : "List Car"}
+                </button>
               </div>
-            </div>
-
-            {/* Error message */}
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2 text-center font-semibold shadow">
-                {error}
-              </div>
-            )}
-            <div className="flex justify-between pt-2">
-              <button
-                type="button"
-                className="px-4 py-2 rounded bg-gray-300"
-                onClick={handlePrev}
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-green-600 text-white px-6 py-2 rounded font-semibold hover:bg-green-700 transition"
-              >
-                {loading ? "Listing..." : "List Car"}
-              </button>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </form>
     </div>
   );

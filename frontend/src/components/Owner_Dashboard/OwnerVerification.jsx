@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { CheckCircle, Loader2 } from "lucide-react"; // Optional icon library
+import { CheckCircle, Loader2 } from "lucide-react";
 
 function OwnerVerification({ onVerify, aadhar, setAadhar, pan, setPan }) {
   const [loading, setLoading] = useState(false);

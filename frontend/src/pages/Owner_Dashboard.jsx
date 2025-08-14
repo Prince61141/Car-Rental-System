@@ -7,7 +7,9 @@ import Cars from "../components/Owner_Dashboard/Cars";
 import Settings from "../components/Owner_Dashboard/Settings";
 import Booking from "../components/Owner_Dashboard/Booking";
 import Notifications from "../components/Owner_Dashboard/Notifications";
+import Transactions from "../components/Owner_Dashboard/Transactions";
 import Chatbot from "../components/Chatbot";
+import Topbar from "../components/Owner_Dashboard/Topbar";
 
 function Owner_Dashboard() {
   const [verified, setVerified] = useState(false);
@@ -88,47 +90,26 @@ function Owner_Dashboard() {
           />
         ) : (
           <>
-            {/* Responsive Header */}
-            <div className="flex flex-col px-4 py-4 md:px-4 md:py-4 gap-2 md:flex-row md:justify-between md:items-center mb-4">
-              <div className="flex items-center gap-2 w-full">
-                <button
-                  className="md:hidden bg-black text-white p-2 rounded mr-2"
-                  onClick={() => setSidebarOpen(true)}
-                  aria-label="Open sidebar"
-                >
-                  ☰
-                </button>
-                <span className="text-xl font-bold">
-                  Welcome, {profile.name}!
-                </span>
-              </div>
-              <div className="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
-                <input
-                  type="text"
-                  placeholder="Search here"
-                  className="border px-4 py-2 rounded-md w-full md:w-64"
-                />
-                <span className="text-xl">🔔</span>
-                <img
-                  src={
-                    profile.photo
-                      ? profile.photo
-                      : `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                          profile.name || "User"
-                        )}`
-                  }
-                  alt="Profile"
-                  className="w-10 h-10 rounded-full object-cover border border-gray-300"
-                />
-              </div>
-            </div>
+            {/* Sticky Topbar (replaces old inline header) */}
+            <Topbar
+              onMenuClick={() => setSidebarOpen(true)}
+              name={profile.name}
+              photo={profile.photo}
+            />
+
             {/* Section Content */}
-            {activeSection === "Dashboard" && <Overview />}
-            {activeSection === "Cars" && <Cars />}
-            {activeSection === "Bookings" && <Booking />}
+            {activeSection === "Dashboard" && (
+              <Overview ownerName={profile?.name} />
+            )}
+            {activeSection === "Cars" && (
+              <Cars ownerName={profile?.name} />
+            )}
+            {activeSection === "Bookings" && (
+              <Booking ownerName={profile?.name} />
+            )}
             {activeSection === "Settings" && <Settings />}
             {activeSection === "Notifications" && <Notifications />}
-            {/* Add more sections as needed */}
+            {activeSection === "Transactions" && <Transactions />}
             <Chatbot />
           </>
         )}

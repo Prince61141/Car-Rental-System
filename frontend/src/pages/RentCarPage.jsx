@@ -6,7 +6,7 @@ import Footer from "../components/Footer";
 function RentCarPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
+  const location = useLocation(); 
 
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,6 +23,37 @@ function RentCarPage() {
 
   const bookingRefMobile = useRef(null);
   const bookingRefDesktop = useRef(null);
+
+  // Decode role from JWT (no verification, just read payload)
+  const auth = useMemo(() => {
+    const raw =
+      localStorage.getItem("token") || localStorage.getItem("accessToken");
+    if (!raw) return { token: "", role: null };
+    const token = raw.replace(/^"+|"+$/g, "");
+    const decode = (t) => {
+      try {
+        const base64 = t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        const json = JSON.parse(atob(base64));
+        return json;
+      } catch {
+        return {};
+      }
+    };
+    const p = decode(token);
+    // Common claim names
+    const rawRole =
+      p.role ||
+      p.roles?.[0] ||
+      p.user?.role ||
+      p["https://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ||
+      null;
+
+    // IMPORTANT: normalize role (trim + lowercase) to avoid trailing spaces/case issues
+    const role =
+      typeof rawRole === "string" ? rawRole.trim().toLowerCase() : null;
+
+    return { token, role };
+  }, []);
 
   // Fetch car
   useEffect(() => {
@@ -102,6 +133,16 @@ function RentCarPage() {
   }, [id, pickupAt, dropoffAt]);
 
   const handleBook = async () => {
+    // Block non-renters
+    if (auth.role && auth.role !== "renter") {
+      setBooking({
+        loading: false,
+        error: "Only renter accounts can book.",
+        success: false,
+      });
+      return;
+    }
+
     setBooking({ loading: true, error: "", success: false });
     try {
       let token =
@@ -130,15 +171,15 @@ function RentCarPage() {
       });
       const data = await res.json();
 
-      if (res.status === 403 && data?.code === "USER_NOT_VERIFIED") {
+      if (res.status === 403 && (data?.code === "USER_NOT_VERIFIED" || data?.code === "ROLE_NOT_ALLOWED")) {
         setBooking({
           loading: false,
-          error: "Please verify your account to book.",
+          error: data?.message || "Action not allowed.",
           success: false,
         });
-        setTimeout(() => {
-          navigate("/renter/dashboard");
-        }, 2500);
+        if (data?.code === "USER_NOT_VERIFIED") {
+          setTimeout(() => navigate("/renter/dashboard"), 2500);
+        }
         return;
       }
 
@@ -149,6 +190,10 @@ function RentCarPage() {
       setBooking({ loading: false, error: e.message, success: false });
     }
   };
+
+  // Convenience flag for UI
+  const canBookAsRole = !auth.role || auth.role === "renter";
+  const isOwner = auth.role === "owner";
 
   const scrollToBooking = () => {
     (bookingRefMobile.current || bookingRefDesktop.current)?.scrollIntoView({
@@ -293,6 +338,7 @@ function RentCarPage() {
                       value={pickupAt}
                       onChange={(e) => setPickupAt(e.target.value)}
                       min={minPickupStr} // enforce 3h lead
+                      disabled={isOwner} // NEW
                     />
                   </div>
                   <div>
@@ -305,9 +351,32 @@ function RentCarPage() {
                       value={dropoffAt}
                       onChange={(e) => setDropoffAt(e.target.value)}
                       min={minDropStr} // enforce 4h min duration
+                      disabled={isOwner} // NEW
                     />
                   </div>
                 </div>
+
+                {/* Role notice (mobile) */}
+                {!canBookAsRole && (
+                  <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 p-3 text-sm">
+                    {isOwner
+                      ? "You are logged in as an owner, so you cannot book this car. To book, please log in with a renter account."
+                      : "Your current account is not allowed to book. Please log in with a renter account."}
+                    <div className="mt-2">
+                      <button
+                        onClick={() =>
+                          navigate("/login", {
+                            state: { next: location.pathname + location.search },
+                          })
+                        }
+                        className="px-4 py-1.5 rounded-md bg-[#2A1A3B] text-white text-sm font-semibold hover:bg-[#1c1128]"
+                      >
+                        Login as renter
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-4">
                   {quoting ? (
                     <div className="text-gray-600 text-sm">
@@ -347,25 +416,27 @@ function RentCarPage() {
                             </div>
                           </div>
                           <button
-                            disabled={!quote.available || booking.loading}
+                            disabled={
+                              !quote.available || booking.loading || !canBookAsRole
+                            }
                             onClick={handleBook}
                             className={`px-5 py-2 rounded-lg font-semibold whitespace-nowrap ${
-                              quote.available
-                                ? "bg-[#2A1A3B] text-white hover:bg-[#1c1128]"
-                                : "bg-gray-300 text-gray-600 cursor-not-allowed"
+                              !quote.available || !canBookAsRole
+                                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                                : "bg-[#2A1A3B] text-white hover:bg-[#1c1128]"
                             }`}
                           >
                             {booking.loading ? "Booking..." : "Confirm Booking"}
                           </button>
                         </div>
-                        {!quote.available && quote.message ? (
-                          <div className="text-xs text-red-600">
-                            {quote.message}
-                          </div>
-                        ) : null}
+                        {/* Deduplicate messages: show overlap OR generic message */}
                         {quote.overlap ? (
                           <div className="text-xs text-red-600">
                             Selected dates overlap with an existing booking.
+                          </div>
+                        ) : !quote.available && quote.message ? (
+                          <div className="text-xs text-red-600">
+                            {quote.message}
                           </div>
                         ) : null}
                       </div>
@@ -444,6 +515,7 @@ function RentCarPage() {
                       value={pickupAt}
                       onChange={(e) => setPickupAt(e.target.value)}
                       min={minPickupStr}
+                      disabled={isOwner} // NEW
                     />
                   </div>
                   <div>
@@ -456,9 +528,32 @@ function RentCarPage() {
                       value={dropoffAt}
                       onChange={(e) => setDropoffAt(e.target.value)}
                       min={minDropStr}
+                      disabled={isOwner} // NEW
                     />
                   </div>
                 </div>
+
+                {/* Role notice (desktop) */}
+                {!canBookAsRole && (
+                  <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 p-3 text-sm">
+                    {isOwner
+                      ? "You are logged in as an owner, so you cannot book this car. To book, please log in with a renter account."
+                      : "Your current account is not allowed to book. Please log in with a renter account."}
+                    <div className="mt-2">
+                      <button
+                        onClick={() =>
+                          navigate("/login", {
+                            state: { next: location.pathname + location.search },
+                          })
+                        }
+                        className="px-4 py-1.5 rounded-md bg-[#2A1A3B] text-white text-sm font-semibold hover:bg-[#1c1128]"
+                      >
+                        Login as renter
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-4">
                   {quoting ? (
                     <div className="text-gray-600 text-sm">
@@ -498,23 +593,29 @@ function RentCarPage() {
                             </div>
                           </div>
                           <button
-                            disabled={!quote.available || booking.loading}
+                            disabled={
+                              !quote.available || booking.loading || !canBookAsRole
+                            }
                             onClick={handleBook}
                             className={`px-5 py-2 rounded-lg font-semibold whitespace-nowrap ${
-                              quote.available
-                                ? "bg-[#2A1A3B] text-white hover:bg-[#1c1128]"
-                                : "bg-gray-300 text-gray-600 cursor-not-allowed"
+                              !quote.available || !canBookAsRole
+                                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                                : "bg-[#2A1A3B] text-white hover:bg-[#1c1128]"
                             }`}
                           >
                             {booking.loading ? "Booking..." : "Confirm Booking"}
                           </button>
                         </div>
-                        {!quote.available && quote.message ? (
+                        {/* Deduplicate messages: show overlap OR generic message */}
+                        {quote.overlap ? (
+                          <div className="text-xs text-red-600">
+                            Selected dates overlap with an existing booking.
+                          </div>
+                        ) : !quote.available && quote.message ? (
                           <div className="text-xs text-red-600">
                             {quote.message}
                           </div>
                         ) : null}
-                        
                       </div>
                     ) : (
                       <div className="text-red-600 text-sm">

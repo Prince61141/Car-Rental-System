@@ -6,6 +6,9 @@ import Overview from "../components/Renter_Dashboard/Overview";
 import Settings from "../components/Renter_Dashboard/Settings";
 import Booking from "../components/Renter_Dashboard/Booking";
 import Chatbot from "../components/Chatbot";
+import Notifications from "../components/Renter_Dashboard/Notifications";
+import Transactions from "../components/Renter_Dashboard/Transactions";
+import { subscribeOpenBooking } from "../components/Renter_Dashboard/dashboardBus";
 
 function Renter_Dashboard() {
   const [verified, setVerified] = useState(false);
@@ -19,9 +22,19 @@ function Renter_Dashboard() {
     role: "",
   });
   const [photoPreview, setPhotoPreview] = useState("");
+  const [active, setActive] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [unauthorized, setUnauthorized] = useState(false);
+  const [openBookingId, setOpenBookingId] = useState(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const unsub = subscribeOpenBooking((id) => {
+      setOpenBookingId(id || null);
+      setActiveSection("Bookings");
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -123,8 +136,15 @@ function Renter_Dashboard() {
             </div>
             {/* Section Content */}
             {activeSection === "Dashboard" && <Overview />}
-            {activeSection === "Bookings" && <Booking />}
+            {activeSection === "Bookings" && (
+              <Booking
+                openId={openBookingId}
+                onOpened={() => setOpenBookingId(null)}
+              />
+            )}
             {activeSection === "Settings" && <Settings />}
+            {activeSection === "Notifications" && <Notifications />}
+            {activeSection === "Transactions" && <Transactions />}
             {/* Add more sections as needed */}
             <Chatbot />
           </>

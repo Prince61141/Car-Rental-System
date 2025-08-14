@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 
 function formatDateTime(iso) {
   try {
@@ -32,7 +32,7 @@ const statusStyles = {
   completed: "bg-blue-100 text-blue-700",
 };
 
-export default function Booking() {
+export default function Booking({ openId = null, onOpened }) {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [error, setError] = useState("");
@@ -42,23 +42,37 @@ export default function Booking() {
     lat: null,
     lng: null,
     address: "",
-    // NEW fields
     ownerName: "",
     ownerPhone: "",
     carNumber: "",
     confirmed: false,
   });
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [highlightId, setHighlightId] = useState(null);
+
+  const scrollToBooking = (id) => {
+    if (!id) return;
+    const el = document.getElementById(`booking-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightId(String(id));
+      setTimeout(() => setHighlightId(null), 2000);
+    }
+  };
 
   const token = useMemo(() => {
-    const t = localStorage.getItem("token") || localStorage.getItem("accessToken");
+    const t =
+      localStorage.getItem("token") || localStorage.getItem("accessToken");
     return t ? t.replace(/^"+|"+$/g, "") : "";
   }, []);
 
   useEffect(() => {
     if (!token) {
-      navigate("/login", { state: { next: location.pathname + location.search } });
+      navigate("/login", {
+        state: { next: location.pathname + location.search },
+      });
       return;
     }
     const load = async () => {
@@ -82,28 +96,44 @@ export default function Booking() {
     load();
   }, [token, navigate, location]);
 
+  useEffect(() => {
+    if (!openId) return;
+    if (!Array.isArray(bookings) || bookings.length === 0) return;
+    scrollToBooking(openId);
+    onOpened && onOpened();
+  }, [openId, bookings]);
+
+  useEffect(() => {
+    const openId = searchParams.get("open");
+    if (openId) scrollToBooking(openId);
+  }, [searchParams, bookings]);
+
   const cancelBooking = async (id) => {
     if (!window.confirm("Cancel this booking?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${id}/cancel`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await fetch(
+        `http://localhost:5000/api/bookings/${id}/cancel`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Cancel failed");
-      setBookings((prev) => prev.map((b) => (b._id === id ? { ...b, status: "cancelled" } : b)));
+      setBookings((prev) =>
+        prev.map((b) => (b._id === id ? { ...b, status: "cancelled" } : b))
+      );
     } catch (e) {
       alert(e.message || "Cancel failed");
     }
   };
 
-  // Pass the whole booking to include owner/car details
   const openMap = (b) => {
     const car = b?.car || {};
-    const owner = b?.owner || b?.car?.owner || {}; // fallback to car.owner
+    const owner = b?.owner || b?.car?.owner || {};
     const loc = car?.location || {};
     const address = [loc.area, loc.city, loc.state].filter(Boolean).join(", ");
 
@@ -113,7 +143,13 @@ export default function Booking() {
       lng: loc.lng ?? null,
       address,
       ownerName: owner.fullName || owner.name || owner.username || "",
-      ownerPhone: owner.mobile || owner.phone || owner.phoneNumber || owner.mobileNumber || owner.contact || "",
+      ownerPhone:
+        owner.mobile ||
+        owner.phone ||
+        owner.phoneNumber ||
+        owner.mobileNumber ||
+        owner.contact ||
+        "",
       carNumber: car.carnumber || car.carNumber || "",
       confirmed: b?.status === "confirmed",
     });
@@ -122,20 +158,38 @@ export default function Booking() {
 
   const MapModal = () => {
     if (!mapOpen) return null;
-    const { title, lat, lng, address, ownerName, ownerPhone, carNumber, confirmed } = mapData;
+    const {
+      title,
+      lat,
+      lng,
+      address,
+      ownerName,
+      ownerPhone,
+      carNumber,
+      confirmed,
+    } = mapData;
     const zoom = 14;
     const src =
       lat != null && lng != null
         ? `https://maps.google.com/maps?ll=${lat},${lng}&z=${zoom}&t=m&output=embed`
-        : `https://maps.google.com/maps?q=${encodeURIComponent(address || title || "Pickup")}&z=${zoom}&t=m&output=embed&iwloc=0`;
+        : `https://maps.google.com/maps?q=${encodeURIComponent(
+            address || title || "Pickup"
+          )}&z=${zoom}&t=m&output=embed&iwloc=0`;
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/50" onClick={() => setMapOpen(false)} />
+        <div
+          className="absolute inset-0 bg-black/50"
+          onClick={() => setMapOpen(false)}
+        />
         <div className="relative bg-white rounded-2xl shadow-xl w-[92vw] max-w-2xl">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <h3 className="font-semibold text-[#2A1A3B]">Pickup Details</h3>
-            <button onClick={() => setMapOpen(false)} className="px-2 py-1 rounded hover:bg-gray-100" aria-label="Close">
+            <button
+              onClick={() => setMapOpen(false)}
+              className="px-2 py-1 rounded hover:bg-gray-100"
+              aria-label="Close"
+            >
               ✕
             </button>
           </div>
@@ -152,7 +206,10 @@ export default function Booking() {
                 {ownerPhone ? (
                   <div className="bg-gray-50 border rounded-lg p-2">
                     <span className="text-gray-500">Owner Phone:</span>{" "}
-                    <a href={`tel:${ownerPhone}`} className="text-[#2A1A3B] hover:underline">
+                    <a
+                      href={`tel:${ownerPhone}`}
+                      className="text-[#2A1A3B] hover:underline"
+                    >
                       {ownerPhone}
                     </a>
                   </div>
@@ -164,13 +221,15 @@ export default function Booking() {
                 ) : null}
                 {address ? (
                   <div className="bg-gray-50 border rounded-lg p-2 sm:col-span-2">
-                    <span className="text-gray-500">Pickup Area:</span> {address}
+                    <span className="text-gray-500">Pickup Area:</span>{" "}
+                    {address}
                   </div>
                 ) : null}
               </div>
             ) : (
               <div className="mb-4 text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                Booking not confirmed yet. Details will be available after confirmation.
+                Booking not confirmed yet. Details will be available after
+                confirmation.
               </div>
             )}
 
@@ -188,7 +247,9 @@ export default function Booking() {
             </div>
 
             {lat != null && lng != null ? (
-              <div className="mt-2 text-xs text-gray-500">Coords: {lat}, {lng}</div>
+              <div className="mt-2 text-xs text-gray-500">
+                Coords: {lat}, {lng}
+              </div>
             ) : null}
           </div>
 
@@ -200,7 +261,9 @@ export default function Booking() {
               href={
                 lat != null && lng != null
                   ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
-                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address || title)}`
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      address || title
+                    )}`
               }
             >
               Open in Google Maps
@@ -215,17 +278,24 @@ export default function Booking() {
     const car = b.car || {};
     const owner = b.owner || b.car?.owner || {}; // fallback
     const ownerName = owner.fullName || owner.name || owner.username || "";
-    const ownerPhone = owner.mobile || owner.phone || owner.phoneNumber || owner.mobileNumber || owner.contact || "";
+    const ownerPhone =
+      owner.mobile ||
+      owner.phone ||
+      owner.phoneNumber ||
+      owner.mobileNumber ||
+      owner.contact ||
+      "";
     const img = car.images?.[0] || car.image || "/placeholder-car.jpg";
     const title =
-      car.name ||
-      [car.brand, car.model].filter(Boolean).join(" ") ||
-      "Car";
+      car.name || [car.brand, car.model].filter(Boolean).join(" ") || "Car";
     const durationHrs = diffHours(b.pickupAt, b.dropoffAt);
     const days = Math.floor(durationHrs / 24);
     const hours = Math.round(durationHrs % 24);
-    const statusClass = statusStyles[b.status] || "bg-gray-100 text-gray-700";
-    const canCancel = b.status === "confirmed" && new Date() < new Date(b.pickupAt);
+    const statusClass =
+      statusStyles[(b.status || "").toLowerCase()] ||
+      "bg-gray-100 text-gray-700"; // FIX: normalize
+    const canCancel =
+      b.status === "confirmed" && new Date() < new Date(b.pickupAt);
 
     return (
       <div className="border rounded-2xl overflow-hidden bg-white shadow-sm">
@@ -236,24 +306,34 @@ export default function Booking() {
           <div className="flex-1 p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold text-[#2A1A3B]">{title}</h3>
+                <h3 className="text-lg font-semibold text-[#2A1A3B]">
+                  {title}
+                </h3>
                 {car.location?.city || car.location?.state ? (
                   <p className="text-sm text-gray-500">
-                    {[car.location?.city, car.location?.state].filter(Boolean).join(", ")}
+                    {[car.location?.city, car.location?.state]
+                      .filter(Boolean)
+                      .join(", ")}
                   </p>
                 ) : null}
               </div>
-              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}`}>
+              <span
+                className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}`}
+              >
                 {b.status?.toUpperCase() || "STATUS"}
               </span>
             </div>
 
             {/* Car and owner details (visible especially for confirmed) */}
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs sm:text-sm">
-              {car.location?.area || car.location?.city || car.location?.state ? (
+              {car.location?.area ||
+              car.location?.city ||
+              car.location?.state ? (
                 <div className="bg-gray-50 border rounded-lg p-2 col-span-1 lg:col-span-3">
                   <span className="text-gray-500">Pickup Area:</span>{" "}
-                  {[car.location?.area, car.location?.city, car.location?.state].filter(Boolean).join(", ")}
+                  {[car.location?.area, car.location?.city, car.location?.state]
+                    .filter(Boolean)
+                    .join(", ")}
                 </div>
               ) : null}
             </div>
@@ -283,7 +363,8 @@ export default function Booking() {
               ) : null}
               {car.transmission ? (
                 <div className="bg-gray-50 border rounded-lg p-2">
-                  <span className="text-gray-500">Trans:</span> {car.transmission}
+                  <span className="text-gray-500">Trans:</span>{" "}
+                  {car.transmission}
                 </div>
               ) : null}
               {car.seats ? (
@@ -293,7 +374,8 @@ export default function Booking() {
               ) : null}
               {car.pricePerDay ? (
                 <div className="bg-gray-50 border rounded-lg p-2">
-                  <span className="text-gray-500">Price:</span> ₹{car.pricePerDay} / Day
+                  <span className="text-gray-500">Price:</span> ₹
+                  {car.pricePerDay} / Day
                 </div>
               ) : null}
             </div>
@@ -301,9 +383,13 @@ export default function Booking() {
             <div className="mt-4 flex items-center justify-between flex-wrap gap-2">
               <div className="text-sm">
                 <div className="text-gray-500">Total Paid/Payable</div>
-                <div className="text-xl font-bold text-[#2A1A3B]">₹{b.totalAmount}</div>
+                <div className="text-xl font-bold text-[#2A1A3B]">
+                  ₹{b.totalAmount}
+                </div>
                 {b.payment?.status ? (
-                  <div className="text-xs text-gray-500">Payment: {b.payment.status}</div>
+                  <div className="text-xs text-gray-500">
+                    Payment: {b.payment.status}
+                  </div>
                 ) : null}
               </div>
               <div className="flex gap-2">
@@ -315,7 +401,11 @@ export default function Booking() {
                 </button>
 
                 {/* Show pickup button only for confirmed bookings with known location */}
-                {b.status === "confirmed" && (car.location && (car.location.lat != null || car.location.city || car.location.area)) ? (
+                {b.status === "confirmed" &&
+                car.location &&
+                (car.location.lat != null ||
+                  car.location.city ||
+                  car.location.area) ? (
                   <button
                     onClick={() => openMap(b)}
                     className="px-4 py-2 rounded-lg font-semibold bg-[#2A1A3B] text-white hover:bg-[#1c1128]"
@@ -344,7 +434,9 @@ export default function Booking() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#2A1A3B]">My Bookings</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#2A1A3B]">
+            My Bookings
+          </h1>
           <p className="text-gray-600 text-sm sm:text-base">
             View your upcoming and past car rentals with full details.
           </p>
@@ -353,7 +445,10 @@ export default function Booking() {
         {loading ? (
           <div className="grid grid-cols-1 gap-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="border rounded-2xl bg-white p-4 animate-pulse">
+              <div
+                key={i}
+                className="border rounded-2xl bg-white p-4 animate-pulse"
+              >
                 <div className="h-40 bg-gray-200 rounded-xl mb-3" />
                 <div className="h-4 bg-gray-200 rounded w-1/3 mb-2" />
                 <div className="h-3 bg-gray-200 rounded w-1/2 mb-2" />
@@ -365,8 +460,12 @@ export default function Booking() {
           <div className="text-red-600">{error}</div>
         ) : bookings.length === 0 ? (
           <div className="border rounded-2xl bg-white p-8 text-center">
-            <h3 className="text-lg font-semibold text-[#2A1A3B]">No bookings yet</h3>
-            <p className="text-gray-600 mt-1">When you book a car, it will appear here.</p>
+            <h3 className="text-lg font-semibold text-[#2A1A3B]">
+              No bookings yet
+            </h3>
+            <p className="text-gray-600 mt-1">
+              When you book a car, it will appear here.
+            </p>
             <button
               onClick={() => navigate("/")}
               className="mt-4 px-5 py-2 rounded-lg bg-[#2A1A3B] text-white font-semibold hover:bg-[#1c1128]"
@@ -377,7 +476,17 @@ export default function Booking() {
         ) : (
           <div className="grid grid-cols-1 gap-5">
             {bookings.map((b) => (
-              <Card key={b._id} b={b} />
+              <div
+                key={b._id}
+                id={`booking-${b._id}`} // NEW: anchor for auto-scroll
+                className={
+                  highlightId === String(b._id)
+                    ? "ring-2 ring-[#2A1A3B] rounded-2xl"
+                    : undefined
+                } // NEW: visual cue
+              >
+                <Card b={b} />
+              </div>
             ))}
           </div>
         )}

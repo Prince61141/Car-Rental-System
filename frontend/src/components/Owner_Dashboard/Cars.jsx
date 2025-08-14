@@ -1,15 +1,39 @@
 import React, { useState, useEffect } from "react";
-import Topbar from "./Topbar";
-import { MdWarningAmber, MdEdit, MdAdd } from "react-icons/md";
+import { MdWarningAmber, MdEdit, MdAdd, MdDirectionsCar } from "react-icons/md";
 import { FaStar } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import CarDetailsModal from "./CarDetailsModal"; // NEW
+import CarDetailsModal from "./CarDetailsModal";
+import ListCar from "./ListCar";
+import { FiPlus } from "react-icons/fi";
 
-function Cars() {
+function Cars({ ownerName }) {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCar, setSelectedCar] = useState(null);
   const navigate = useNavigate();
+
+  const [carsCount, setCarsCount] = useState(0);
+  const [loadingCars, setLoadingCars] = useState(true);
+  const [showListCar, setShowListCar] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        const res = await fetch("http://localhost:5000/api/cars/mycars", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok && data?.success) {
+          setCarsCount((data.cars || []).length);
+        }
+      } finally {
+        setLoadingCars(false);
+      }
+    };
+    load();
+  }, []);
 
   useEffect(() => {
     const fetchCars = async () => {
@@ -102,7 +126,40 @@ function Cars() {
 
   return (
     <div>
-      <Topbar />
+      <div className="bg-white rounded-2xl border shadow-sm px-4 sm:px-6 py-4 m-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                Welcome, {ownerName || "Owner"}!
+              </h1>
+              <p className="text-gray-600 text-sm">
+                Keep up the great work! Your cars are helping people travel
+              </p>
+            </div>
+
+            <div className="flex sm:flex-col items-center sm:items-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowListCar(true)}
+                className="inline-flex items-center gap-2 bg-[#2f1c53] hover:bg-[#3d3356] text-white font-medium text-sm px-4 py-2 rounded-lg shadow transition"
+              >
+                <FiPlus size={18} />
+                List A new Car
+              </button>
+              <div className="flex items-center text-sm text-gray-700">
+                <MdDirectionsCar className="mr-2" size={18} />
+                {loadingCars ? "Loading..." : `${carsCount} Active Listing`}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {showListCar && (
+          <ListCar
+            onCarAdded={() => {}}
+            onClose={() => setShowListCar(false)}
+          />
+        )}
       <div className="mt-8 md:mt-10 ml-3 mr-3">
         <div className="space-y-4">
           {loading ? (
