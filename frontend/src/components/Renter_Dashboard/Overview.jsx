@@ -302,75 +302,97 @@ export default function Overview() {
       </div>
 
       {/* Recent and upcoming trips */}
-      <div className="rounded-xl overflow-hidden w-full bg-white shadow">
+      <div className="rounded-xl overflow-hidden w-full bg-white shadow mr-2">
         <div className="px-6 py-3 border-b bg-gray-100">
-          <div className="grid grid-cols-7 font-semibold text-gray-700">
-            <div>No.</div>
-            <div>Car no.</div>
-            <div>Car</div>
-            <div>Owner</div>
-            <div>Status</div>
-            <div>Total</div>
-            <div className="text-right">Details</div>
-          </div>
+          <div className="font-semibold text-gray-700">Recent & Upcoming Trips</div>
         </div>
 
-        {loading ? (
-          <div className="p-6 text-gray-500">Loading...</div>
-        ) : err ? (
-          <div className="p-6 text-red-600">{err}</div>
-        ) : recentBookings.length === 0 ? (
-          <div className="p-6 text-gray-500">No trips yet.</div>
-        ) : (
-          recentBookings.map((b, idx) => {
-            const car = b.car || {};
-            const owner = b.owner || b.car?.owner || {};
-            const carNo = car.carnumber || "-";
-            const title = car.name || [car.brand, car.model].filter(Boolean).join(" ") || "-";
-            const ownerName = owner.fullName || owner.name || owner.username || "-";
-            const ownerPhone = owner.mobile || owner.phone || "-";
-            const sKey = (b.status || "").toLowerCase();
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 text-left">
+              <tr className="text-gray-700">
+                <th className="px-6 py-3 font-semibold">No.</th>
+                <th className="px-6 py-3 font-semibold">Car</th>
+                <th className="px-6 py-3 font-semibold">Owner</th>
+                <th className="px-6 py-3 font-semibold">Status</th>
+                <th className="px-6 py-3 font-semibold">Total</th>
+                <th className="px-6 py-3 font-semibold text-center">Details</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-6 text-gray-500">
+                    Loading...
+                  </td>
+                </tr>
+              ) : err ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-6 text-red-600">
+                    {err}
+                  </td>
+                </tr>
+              ) : recentBookings.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-6 text-gray-500">
+                    No trips yet.
+                  </td>
+                </tr>
+              ) : (
+                recentBookings.map((b, idx) => {
+                  const car = b.car || {};
+                  const owner = b.owner || b.car?.owner || {};
+                  const title =
+                    car.name || [car.brand, car.model].filter(Boolean).join(" ") || "-";
+                  const ownerName =
+                    owner.fullName || owner.name || owner.username || "-";
+                  const sKey = (b.status || "").toLowerCase();
 
-            return (
-              <div
-                key={b._id || idx}
-                className="grid grid-cols-7 items-center px-6 py-4 border-t hover:bg-gray-50"
-              >
-                <div>{(idx + 1).toString().padStart(2, "0")}</div>
-                <div>
-                  <span className="bg-gray-100 px-3 py-1 rounded font-semibold shadow text-gray-700">
-                    {carNo}
-                  </span>
-                </div>
-                <div className="text-sm">
-                  <div className="font-medium text-gray-800">{title}</div>
-                  <div className="text-xs text-gray-500">{addressOf(car.location)}</div>
-                </div>
-                <div className="text-sm">
-                  <div className="font-medium text-gray-800">{ownerName}</div>
-                  <div className="text-xs text-gray-500">{ownerPhone}</div>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className={`h-3 w-3 rounded-full ${statusStyles[sKey] || "bg-gray-400"}`} />
-                  <span className={`font-semibold ${statusText[sKey] || "text-gray-700"}`}>
-                    {b.status || "-"}
-                  </span>
-                </div>
-                <div className="text-sm font-medium text-gray-700">
-                  ₹{Number(b.totalAmount || 0).toFixed(0)}
-                </div>
-                <div className="text-right">
-                  <button
-                    className="text-sm text-white bg-[#2f1c53] hover:bg-[#3f2e6c] px-4 py-1 rounded"
-                    onClick={() => openBookingDetails(b._id)}
-                  >
-                    Details
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
+                  return (
+                    <tr key={b._id || idx} className="hover:bg-gray-50">
+                      <td className="px-6 py-3">{(idx + 1).toString().padStart(2, "0")}</td>
+                      <td className="px-6 py-3">
+                        <div className="font-medium text-gray-800">{title}</div>
+                        <div className="text-xs text-gray-500">
+                          {addressOf(car.location)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-3">
+                        <div className="font-medium text-gray-800">{ownerName}</div>
+                      </td>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`h-3 w-3 rounded-full ${
+                              statusStyles[sKey] || "bg-gray-400"
+                            }`}
+                          />
+                          <span
+                            className={`font-semibold ${
+                              statusText[sKey] || "text-gray-700"
+                            }`}
+                          >
+                            {b.status || "-"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 font-medium text-gray-700">
+                        ₹{Number(b.totalAmount || 0).toFixed(0)}
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <button
+                          className="text-sm text-white bg-[#2f1c53] hover:bg-[#3f2e6c] px-4 py-1 rounded"
+                          onClick={() => openBookingDetails(b._id)} >
+                          Details
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

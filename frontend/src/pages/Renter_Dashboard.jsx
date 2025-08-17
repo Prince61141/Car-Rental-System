@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Renter_Dashboard/Sidebar";
+import Topbar from "../components/Owner_Dashboard/Topbar";
 import RenterVerification from "../components/Renter_Dashboard/RenterVerification";
 import Overview from "../components/Renter_Dashboard/Overview";
 import Settings from "../components/Renter_Dashboard/Settings";
@@ -22,7 +23,6 @@ function Renter_Dashboard() {
     role: "",
   });
   const [photoPreview, setPhotoPreview] = useState("");
-  const [active, setActive] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [unauthorized, setUnauthorized] = useState(false);
   const [openBookingId, setOpenBookingId] = useState(null);
@@ -101,39 +101,11 @@ function Renter_Dashboard() {
         ) : (
           <>
             {/* Responsive Header */}
-            <div className="flex flex-col px-4 py-4 md:px-4 md:py-4 gap-2 md:flex-row md:justify-between md:items-center mb-4">
-              <div className="flex items-center gap-2 w-full">
-                <button
-                  className="md:hidden bg-black text-white p-2 rounded mr-2"
-                  onClick={() => setSidebarOpen(true)}
-                  aria-label="Open sidebar"
-                >
-                  ☰
-                </button>
-                <span className="text-xl font-bold">
-                  Welcome, {profile.name}!
-                </span>
-              </div>
-              <div className="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
-                <input
-                  type="text"
-                  placeholder="Search here"
-                  className="border px-4 py-2 rounded-md w-full md:w-64"
-                />
-                <span className="text-xl">🔔</span>
-                <img
-                  src={
-                    profile.photo
-                      ? profile.photo
-                      : `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                          profile.name || "User"
-                        )}`
-                  }
-                  alt="Profile"
-                  className="w-10 h-10 rounded-full object-cover border border-gray-300"
-                />
-              </div>
-            </div>
+            <Topbar
+              onMenuClick={() => setSidebarOpen(true)}
+              name={profile.name}
+              photo={profile.photo}
+            />
             {/* Section Content */}
             {activeSection === "Dashboard" && <Overview />}
             {activeSection === "Bookings" && (

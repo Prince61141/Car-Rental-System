@@ -6,7 +6,7 @@ function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
-export default function CarsPage() {
+function CarsPage() {
   const query = useQuery();
   const navigate = useNavigate();
   const [cars, setCars] = useState([]);
@@ -66,6 +66,76 @@ export default function CarsPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const normalizeCar = (c) => {
+    const rawImages = []
+      .concat(Array.isArray(c.images) ? c.images : [])
+      .concat(Array.isArray(c.image) ? c.image : [])
+      .concat(Array.isArray(c.photos) ? c.photos : [])
+      .concat(Array.isArray(c.gallery) ? c.gallery : [])
+      .concat(Array.isArray(c.media) ? c.media : [])
+      .concat(typeof c.image === "string" ? [c.image] : [])
+      .concat(typeof c.imageUrl === "string" ? [c.imageUrl] : [])
+      .concat(typeof c.img === "string" ? [c.img] : []);
+    const toUrl = (x) =>
+      typeof x === "string"
+        ? x
+        : x && typeof x === "object"
+        ? x.url || x.secure_url || x.path || x.src || ""
+        : "";
+    const images = rawImages.map(toUrl).filter(Boolean);
+    const first = images[0] || "";
+
+    const brand = c.brand || "";
+    const model = c.model || "";
+
+    const fuelTypeVal =
+      c.fueltype ||
+      "";
+    const transmissionVal =
+      c.transmission ||
+      "";
+
+    const cap = (s) =>
+      s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : "";
+
+    return {
+      ...c,
+      images,
+      image: images,
+      img: first,
+      imageUrl: first,
+
+      // Identity
+      name: c.name || c.title || [brand, model].filter(Boolean).join(" "),
+      title: c.title || c.name || [brand, model].filter(Boolean).join(" "),
+      brand,
+      model,
+      carnumber: c.carnumber || c.carNumber || c.registration || "",
+
+      // Specs
+      fuelType: fuelTypeVal,
+      transmission: transmissionVal,
+      seats:
+        c.seats ??
+        c.capacity ??
+        c.seating ??
+        c.seaters ??
+        c.seat ??
+        "",
+
+      pricePerDay: c.pricePerDay ?? c.price ?? 0,
+      price: c.price ?? c.pricePerDay ?? 0,
+
+      tags:
+        Array.isArray(c.tags) && c.tags.length
+          ? c.tags
+          : [cap(transmissionVal), cap(fuelTypeVal)].filter(Boolean),
+
+      location: c.location || {},
+      availability: c.availability !== false,
+    };
+  };
+
   useEffect(() => {
     if (
       !pickupCity ||
@@ -91,7 +161,7 @@ export default function CarsPage() {
         );
         const data = await res.json();
         if (res.ok && data.success) {
-          setCars(data.cars);
+          setCars((Array.isArray(data.cars) ? data.cars : []).map(normalizeCar));
         } else {
           setCars([]);
         }
@@ -110,18 +180,43 @@ export default function CarsPage() {
     dropoffTime,
   ]);
 
+  const norm = (v) => String(v || "").trim().toLowerCase();
   const filteredCars = cars
-    .filter(
-      (car) =>
-        car.pricePerDay >= priceRange[0] &&
-        car.pricePerDay <= priceRange[1] &&
-        (carType ? car.type === carType : true) &&
-        (transmission ? car.transmission === transmission : true) &&
-        (fuelType ? car.fuelType === fuelType : true)
-    )
+    .filter((car) => {
+      if (car.availability === false) return false; // hide unavailable
+      const price = Number(car.pricePerDay) || 0;
+      if (price < priceRange[0] || price > priceRange[1]) return false;
+
+      if (carType && norm(car.type) !== norm(carType)) return false;
+
+      if (transmission) {
+        const c = norm(car.transmission);
+        const w = norm(transmission);
+        const ok =
+          (w === "automatic" && (c === "automatic" || c === "auto")) ||
+          (w === "manual" && (c === "manual" || c === "mt")) ||
+          c === w;
+        if (!ok) return false;
+      }
+
+      if (fuelType) {
+        const c = norm(car.fuelType);
+        const w = norm(fuelType);
+        const ok =
+          (w === "diesel" && c.includes("diesel")) ||
+          (w === "petrol" && (c.includes("petrol") || c.includes("gasoline"))) ||
+          (w === "electric" && (c.includes("electric") || c.includes("ev"))) ||
+          (w === "cng" && c.includes("cng")) ||
+          (w === "hybrid" && c.includes("hybrid")) ||
+          c === w;
+        if (!ok) return false;
+      }
+
+      return true;
+    })
     .sort((a, b) => {
-      if (sortBy === "low-high") return a.pricePerDay - b.pricePerDay;
-      if (sortBy === "high-low") return b.pricePerDay - a.pricePerDay;
+      if (sortBy === "low-high") return (a.pricePerDay || 0) - (b.pricePerDay || 0);
+      if (sortBy === "high-low") return (b.pricePerDay || 0) - (a.pricePerDay || 0);
       return 0;
     });
 
@@ -351,3 +446,5 @@ export default function CarsPage() {
     </div>
   );
 }
+
+export default CarsPage;

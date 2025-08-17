@@ -32,7 +32,7 @@ const statusStyles = {
   completed: "bg-blue-100 text-blue-700",
 };
 
-export default function Booking({ openId = null, onOpened }) {
+function Booking({ openId = null, onOpened }) {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [error, setError] = useState("");
@@ -45,6 +45,7 @@ export default function Booking({ openId = null, onOpened }) {
     ownerName: "",
     ownerPhone: "",
     carNumber: "",
+    fuelType: "",
     confirmed: false,
   });
   const [searchParams] = useSearchParams();
@@ -135,21 +136,21 @@ export default function Booking({ openId = null, onOpened }) {
     const car = b?.car || {};
     const owner = b?.owner || b?.car?.owner || {};
     const loc = car?.location || {};
+    const fuelType = car?.fuelType || "";
     const address = [loc.area, loc.city, loc.state].filter(Boolean).join(", ");
+    const fulladdress = [loc.addressLine, loc.area, loc.city, loc.state]
+      .filter(Boolean)
+      .join(", ");
 
     setMapData({
       title: car?.name || [car?.brand, car?.model].filter(Boolean).join(" "),
       lat: loc.lat ?? null,
       lng: loc.lng ?? null,
+      fuelType,
       address,
+      fulladdress,
       ownerName: owner.fullName || owner.name || owner.username || "",
-      ownerPhone:
-        owner.mobile ||
-        owner.phone ||
-        owner.phoneNumber ||
-        owner.mobileNumber ||
-        owner.contact ||
-        "",
+      ownerPhone: owner.phone || "",
       carNumber: car.carnumber || car.carNumber || "",
       confirmed: b?.status === "confirmed",
     });
@@ -163,9 +164,11 @@ export default function Booking({ openId = null, onOpened }) {
       lat,
       lng,
       address,
+      fulladdress,
       ownerName,
       ownerPhone,
       carNumber,
+      fuelType,
       confirmed,
     } = mapData;
     const zoom = 14;
@@ -177,7 +180,7 @@ export default function Booking({ openId = null, onOpened }) {
           )}&z=${zoom}&t=m&output=embed&iwloc=0`;
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 z-50 flex items-center justify-center mb-4">
         <div
           className="absolute inset-0 bg-black/50"
           onClick={() => setMapOpen(false)}
@@ -219,10 +222,15 @@ export default function Booking({ openId = null, onOpened }) {
                     <span className="text-gray-500">Car No:</span> {carNumber}
                   </div>
                 ) : null}
-                {address ? (
+                {fuelType ? (
+                  <div className="bg-gray-50 border rounded-lg p-2">
+                    <span className="text-gray-500">Fuel Type:</span> {fuelType}
+                  </div>
+                ) : null}
+                {fulladdress ? (
                   <div className="bg-gray-50 border rounded-lg p-2 sm:col-span-2">
                     <span className="text-gray-500">Pickup Area:</span>{" "}
-                    {address}
+                    {fulladdress}
                   </div>
                 ) : null}
               </div>
@@ -276,15 +284,9 @@ export default function Booking({ openId = null, onOpened }) {
 
   const Card = ({ b }) => {
     const car = b.car || {};
-    const owner = b.owner || b.car?.owner || {}; // fallback
+    const owner = b.owner || b.car?.owner || {};
     const ownerName = owner.fullName || owner.name || owner.username || "";
-    const ownerPhone =
-      owner.mobile ||
-      owner.phone ||
-      owner.phoneNumber ||
-      owner.mobileNumber ||
-      owner.contact ||
-      "";
+    const ownerPhone = owner.phone || "";
     const img = car.images?.[0] || car.image || "/placeholder-car.jpg";
     const title =
       car.name || [car.brand, car.model].filter(Boolean).join(" ") || "Car";
@@ -297,10 +299,15 @@ export default function Booking({ openId = null, onOpened }) {
     const canCancel =
       b.status === "confirmed" && new Date() < new Date(b.pickupAt);
 
+    const challanAmount = Number(b?.completion?.challanAmount || 0);
+    const fastagAmount = Number(b?.completion?.fastagAmount || 0);
+    const approval = (b?.completion?.approval || "pending").toLowerCase();
+    const showCharges = String(b.status || "").toLowerCase() === "completed";
+
     return (
       <div className="border rounded-2xl overflow-hidden bg-white shadow-sm">
         <div className="flex flex-col sm:flex-row">
-          <div className="sm:w-48 h-40 sm:h-auto bg-gray-100 shrink-0">
+          <div className="sm:w-[30%] h-auto sm:h-auto bg-gray-100 shrink-0">
             <img src={img} alt={title} className="w-full h-full object-cover" />
           </div>
           <div className="flex-1 p-4">
@@ -329,7 +336,7 @@ export default function Booking({ openId = null, onOpened }) {
               {car.location?.area ||
               car.location?.city ||
               car.location?.state ? (
-                <div className="bg-gray-50 border rounded-lg p-2 col-span-1 lg:col-span-3">
+                <div className="bg-gray-50 border rounded-lg p-2 col-span-1 lg:col-span-2">
                   <span className="text-gray-500">Pickup Area:</span>{" "}
                   {[car.location?.area, car.location?.city, car.location?.state]
                     .filter(Boolean)
@@ -355,31 +362,6 @@ export default function Booking({ openId = null, onOpened }) {
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs sm:text-sm">
-              {car.fuelType ? (
-                <div className="bg-gray-50 border rounded-lg p-2">
-                  <span className="text-gray-500">Fuel:</span> {car.fuelType}
-                </div>
-              ) : null}
-              {car.transmission ? (
-                <div className="bg-gray-50 border rounded-lg p-2">
-                  <span className="text-gray-500">Trans:</span>{" "}
-                  {car.transmission}
-                </div>
-              ) : null}
-              {car.seats ? (
-                <div className="bg-gray-50 border rounded-lg p-2">
-                  <span className="text-gray-500">Seats:</span> {car.seats}
-                </div>
-              ) : null}
-              {car.pricePerDay ? (
-                <div className="bg-gray-50 border rounded-lg p-2">
-                  <span className="text-gray-500">Price:</span> ₹
-                  {car.pricePerDay} / Day
-                </div>
-              ) : null}
-            </div>
-
             <div className="mt-4 flex items-center justify-between flex-wrap gap-2">
               <div className="text-sm">
                 <div className="text-gray-500">Total Paid/Payable</div>
@@ -392,6 +374,7 @@ export default function Booking({ openId = null, onOpened }) {
                   </div>
                 ) : null}
               </div>
+
               <div className="flex gap-2">
                 <button
                   onClick={() => navigate(`/rent/${car._id || car.id || ""}`)}
@@ -400,7 +383,6 @@ export default function Booking({ openId = null, onOpened }) {
                   View Car
                 </button>
 
-                {/* Show pickup button only for confirmed bookings with known location */}
                 {b.status === "confirmed" &&
                 car.location &&
                 (car.location.lat != null ||
@@ -424,6 +406,47 @@ export default function Booking({ openId = null, onOpened }) {
                 ) : null}
               </div>
             </div>
+
+            {showCharges && (
+              <div className="mt-4 bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium text-indigo-900">
+                    Additional charges
+                  </div>
+                  <div
+                    className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                      approval === "approved"
+                        ? "bg-green-100 text-green-700"
+                        : approval === "rejected"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    Approval:{" "}
+                    {approval.charAt(0).toUpperCase() + approval.slice(1)}
+                  </div>
+                </div>
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                  <div className="bg-white/70 rounded border border-indigo-100 p-2">
+                    <span className="text-gray-600">Challan charges: </span>
+                    <span className="font-semibold">
+                      ₹{challanAmount.toFixed(0)}
+                    </span>
+                  </div>
+                  <div className="bg-white/70 rounded border border-indigo-100 p-2">
+                    <span className="text-gray-600">FASTag/Toll: </span>
+                    <span className="font-semibold">
+                      ₹{fastagAmount.toFixed(0)}
+                    </span>
+                  </div>
+                </div>
+                {b?.completion?.notes ? (
+                  <div className="mt-2 text-xs text-gray-600">
+                    Note: {b.completion.notes}
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -497,3 +520,5 @@ export default function Booking({ openId = null, onOpened }) {
     </div>
   );
 }
+
+export default Booking;

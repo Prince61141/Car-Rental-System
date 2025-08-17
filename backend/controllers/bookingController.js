@@ -1,8 +1,10 @@
 import fs from "fs";
 import path from "path";
 import Booking from "../models/Booking.js";
-import Car from "../models/Car.js";
+import Car from "../models/car.js";
 import User from "../models/User.js";
+import Transaction from "../models/Transaction.js";
+import multer from "multer";
 
 const HOUR_MS = 60 * 60 * 1000;
 const MIN_LEAD_HOURS = 3;
@@ -265,6 +267,56 @@ export const createBooking = async (req, res) => {
       payment: { method: paymentMethod, status: "unpaid" },
     });
 
+    try {
+      const carSnap = {
+        name: car.name || `${car.brand || ""} ${car.model || ""}`.trim(),
+        brand: car.brand,
+        model: car.model,
+        carnumber: car.carnumber,
+      };
+      const paidNow = booking.payment?.status === "paid";
+      const amount = Number(booking.totalAmount || booking.amount || 0);
+
+      // Ensure owner credit exists and is correct
+      await Transaction.updateOne(
+        { booking: booking._id, owner: booking.owner, type: "booking" },
+        {
+          $setOnInsert: {
+            owner: booking.owner,
+            booking: booking._id,
+            car: carSnap,
+            type: "booking",
+            direction: "credit",
+            amount,
+            currency: "INR",
+            note: `Booking ${booking._id} owner credit`,
+          },
+          $set: { status: paidNow ? "paid" : "pending" },
+        },
+        { upsert: true }
+      );
+
+      await Transaction.updateOne(
+        { booking: booking._id, renter: booking.user, type: "booking" },
+        {
+          $setOnInsert: {
+            renter: booking.user,
+            booking: booking._id,
+            car: carSnap,
+            type: "booking",
+            direction: "debit",
+            amount,
+            currency: "INR",
+            note: `Booking ${booking._id} renter debit`,
+          },
+          $set: { status: paidNow ? "paid" : "pending" },
+        },
+        { upsert: true }
+      );
+    } catch (e) {
+      console.error("log booking transactions failed:", e?.message || e);
+    }
+
     return res.status(201).json({
       success: true,
       booking,
@@ -274,7 +326,6 @@ export const createBooking = async (req, res) => {
   }
 };
 
-// GET /api/bookings/:id
 export const getBooking = async (req, res) => {
   try {
     const b = await Booking.findById(req.params.id)
@@ -295,7 +346,6 @@ export const getBooking = async (req, res) => {
   }
 };
 
-// Enhance listBookings to include nested license URL for owner dashboards
 export const listBookings = async (req, res) => {
   try {
     const scope = req.query.scope || "me";
@@ -321,8 +371,6 @@ export const listBookings = async (req, res) => {
   }
 };
 
-// NEW: GET /api/bookings/:id/renter-license
-// Streams the renter's license PDF to the owner (or the renter themselves)
 export const getRenterLicensePdf = async (req, res) => {
   try {
     const bookingId = req.params.id;
@@ -373,22 +421,298 @@ export const getRenterLicensePdf = async (req, res) => {
 
 export const cancelBooking = async (req, res) => {
   try {
-    const b = await Booking.findById(req.params.id);
-    if (!b) return res.status(404).json({ success: false, message: "Not found" });
+    const booking = await Booking.findById(req.params.id).populate("car");
+    if (!booking) return res.status(404).json({ success: false, message: "Not found" });
 
     const uid = String(req.user?._id || "");
-    if (String(b.user) !== uid && String(b.owner) !== uid && req.user?.role !== "admin") {
+    // Allow renter, owner, or admin to cancel
+    if (
+      String(booking.user) !== uid &&
+      String(booking.owner) !== uid &&
+      req.user?.role !== "admin"
+    ) {
       return res.status(403).json({ success: false, message: "Forbidden" });
     }
 
-    if (new Date() >= b.pickupAt) {
-      return res.status(400).json({ success: false, message: "Cannot cancel after pickup time" });
+    // Block cancelling completed bookings
+    if (String(booking.status).toLowerCase() === "completed") {
+      return res.status(400).json({ success: false, message: "Completed bookings cannot be cancelled" });
+    }
+    // If already cancelled, return early
+    if (String(booking.status).toLowerCase() === "cancelled") {
+      return res.json({ success: true, booking, message: "Already cancelled" });
     }
 
-    b.status = "cancelled";
-    await b.save();
-    return res.json({ success: true, booking: b });
-  } catch {
+    // 3-hour window before pickup (applies to owner and renter)
+    const now = Date.now();
+    const pickupTs = new Date(booking.pickupAt).getTime();
+    if (!Number.isFinite(pickupTs)) {
+      return res.status(400).json({ success: false, message: "Invalid pickup time" });
+    }
+    const cutoffTs = pickupTs - MIN_LEAD_HOURS * HOUR_MS; // MIN_LEAD_HOURS = 3
+    if (now >= cutoffTs) {
+      return res.status(400).json({
+        success: false,
+        code: "CANCEL_WINDOW_PASSED",
+        message: `Cancellation allowed only until ${MIN_LEAD_HOURS} hours before pickup.`,
+      });
+    }
+
+    // Change booking status
+    booking.status = "cancelled";
+    await booking.save();
+
+    // Update both debit and credit transactions
+    await Transaction.updateMany(
+      { booking: booking._id },
+      { $set: { type: "cancel", status: "refunded" } }
+    );
+
+    return res.json({ success: true, booking });
+  } catch (err) {
+    console.error("Cancel booking failed:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+
+async function logRefund(booking, carDoc, amount) {
+  try {
+    const ownerId = carDoc.owner?._id || carDoc.owner;
+    const renterId = booking.user || booking.renter || booking.userId;
+    const carSnap = {
+      name: carDoc.name || `${carDoc.brand || ""} ${carDoc.model || ""}`.trim(),
+      brand: carDoc.brand,
+      model: carDoc.model,
+      carnumber: carDoc.carnumber,
+    };
+    await Transaction.create([
+      {
+        owner: ownerId,
+        booking: booking._id,
+        car: carSnap,
+        type: "refund",
+        direction: "debit",     // money out from owner
+        status: "refunded",
+        amount: Math.abs(Number(amount || 0)),
+        currency: "INR",
+        note: `Refund for booking ${booking._id}`,
+      },
+      {
+        renter: renterId,
+        booking: booking._id,
+        car: carSnap,
+        type: "refund",
+        direction: "credit",    // money back to renter
+        status: "refunded",
+        amount: Math.abs(Number(amount || 0)),
+        currency: "INR",
+        note: `Refund for booking ${booking._id}`,
+      },
+    ]);
+  } catch (e) {
+    console.error("logRefund failed:", e?.message || e);
+  }
+}
+
+// NEW: logBookingTransactions function
+async function logBookingTransactions(booking, carDoc) {
+  try {
+    const ownerId = carDoc.owner?._id || carDoc.owner;
+    const renterId = booking.user || booking.renter || booking.userId; // adjust to your schema
+    const carSnap = {
+      name: carDoc.name || `${carDoc.brand || ""} ${carDoc.model || ""}`.trim(),
+      brand: carDoc.brand,
+      model: carDoc.model,
+      carnumber: carDoc.carnumber,
+    };
+    const paidNow = booking.payment?.status === "paid";
+    const amount = Number(booking.totalAmount || booking.amount || 0);
+
+    await Transaction.create([
+      {
+        owner: ownerId,
+        booking: booking._id,
+        car: carSnap,
+        type: "booking",
+        direction: "credit",
+        status: paidNow ? "paid" : "pending",
+        amount,
+        currency: "INR",
+        note: `Booking ${booking._id} owner credit`,
+      },
+      {
+        renter: renterId,
+        booking: booking._id,
+        car: carSnap,
+        type: "booking",
+        direction: "debit",    // renter pays
+        status: paidNow ? "paid" : "pending",
+        amount,
+        currency: "INR",
+        note: `Booking ${booking._id} renter debit`,
+      },
+    ]);
+  } catch (e) {
+    console.error("logBookingTransactions failed:", e?.message || e);
+  }
+}
+
+const ensureDir = (dir) => {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch {}
+};
+const completionStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const bId = String(req.params?.id || "misc");
+    const dest = path.join(process.cwd(), "uploads", "booking-completions", bId);
+    ensureDir(dest);
+    cb(null, dest);
+  },
+  filename: (req, file, cb) => {
+    const ts = Date.now();
+    const rnd = Math.round(Math.random() * 1e6);
+    const ext = path.extname(file.originalname || "");
+    cb(null, `${file.fieldname}-${ts}-${rnd}${ext}`);
+  },
+});
+export const completeUpload = multer({
+  storage: completionStorage,
+  limits: { fileSize: 10 * 1024 * 1024, files: 10 },
+});
+
+async function logExtraChargeTransactions(booking, carDoc, label, amount) {
+  try {
+    const ownerId = carDoc.owner?._id || carDoc.owner;
+    const renterId = booking.user || booking.renter || booking.userId;
+    const carSnap = {
+      name: carDoc.name || `${carDoc.brand || ""} ${carDoc.model || ""}`.trim(),
+      brand: carDoc.brand,
+      model: carDoc.model,
+      carnumber: carDoc.carnumber,
+    };
+    const amt = Math.abs(Number(amount || 0));
+    if (!(amt > 0)) return;
+
+    const status = "pending";
+    await Transaction.create([
+      {
+        owner: ownerId,
+        booking: booking._id,
+        car: carSnap,
+        type: "fee",
+        direction: "credit",
+        status,
+        amount: amt,
+        currency: "INR",
+        note: `${label} for booking ${booking._id}`,
+      },
+      {
+        renter: renterId,
+        booking: booking._id,
+        car: carSnap,
+        type: "fee",
+        direction: "debit",
+        status,
+        amount: amt,
+        currency: "INR",
+        note: `${label} for booking ${booking._id}`,
+      },
+    ]);
+  } catch (e) {
+    console.error("logExtraChargeTransactions failed:", e?.message || e);
+  }
+}
+
+export const completeBooking = async (req, res) => {
+  try {
+    const uid = req.user?._id;
+    if (!uid) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const bookingId = req.params.id;
+    const booking = await Booking.findById(bookingId).populate("car");
+    if (!booking) return res.status(404).json({ success: false, message: "Booking not found" });
+
+    const isOwner = String(booking.owner) === String(uid);
+    const isAdmin = req.user?.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    const now = Date.now();
+    const dropTs = new Date(booking.dropoffAt).getTime();
+    if (!Number.isFinite(dropTs)) {
+      return res.status(400).json({ success: false, message: "Invalid dropoff time" });
+    }
+    if (now < dropTs - HOUR_MS) {
+      return res.status(400).json({
+        success: false,
+        code: "TOO_EARLY",
+        message: "Can only complete within 1 hour of dropoff time.",
+      });
+    }
+    if (String(booking.status).toLowerCase() === "completed") {
+      return res.json({ success: true, booking, message: "Already completed" });
+    }
+    if (String(booking.status).toLowerCase() === "cancelled") {
+      return res.status(400).json({ success: false, message: "Cancelled booking cannot be completed" });
+    }
+
+    const carInspected =
+      /^true$/i.test(String(req.body?.carInspected || "")) || req.body?.carInspected === "1";
+    const notes = String(req.body?.notes || "").slice(0, 2000);
+
+    const challanAmount = Number(req.body?.challanAmount ?? req.body?.challanLink ?? 0);
+    const fastagAmount = Number(req.body?.fastagAmount ?? req.body?.fastagLink ?? 0);
+
+    const challanFiles = Array.isArray(req.files?.challanProof) ? req.files.challanProof : (req.files?.challanProof ? [req.files.challanProof] : []);
+    const tollFiles = Array.isArray(req.files?.tollProof) ? req.files.tollProof : (req.files?.tollProof ? [req.files.tollProof] : []);
+    const norm = (f) =>
+      f
+        .filter(Boolean)
+        .map((x) =>
+          path
+            .relative(process.cwd(), x.path)
+            .replace(/\\/g, "/")
+        );
+    const challanProof = norm(challanFiles || []);
+    const tollProof = norm(tollFiles || []);
+
+    booking.status = "completed";
+    booking.completedAt = new Date();
+    booking.completedBy = req.user?._id || booking.completedBy;
+    booking.completion = {
+      carInspected: !!carInspected,
+      notes,
+      challanAmount: Number.isFinite(challanAmount) ? challanAmount : 0,
+      fastagAmount: Number.isFinite(fastagAmount) ? fastagAmount : 0,
+      challanProof,
+      tollProof,
+      approval,
+    };
+    if (typeof booking.markModified === "function") booking.markModified("completion");
+    await booking.save();
+
+    if (Number(challanAmount) > 0) {
+      await logExtraChargeTransactions(booking, booking.car, "Challan charges", challanAmount);
+    }
+    if (Number(fastagAmount) > 0) {
+      await logExtraChargeTransactions(booking, booking.car, "FASTag/Toll charges", fastagAmount);
+    }
+
+    return res.json({
+      success: true,
+      booking,
+      charges: {
+        challanAmount: Number.isFinite(challanAmount) ? challanAmount : 0,
+        fastagAmount: Number.isFinite(fastagAmount) ? fastagAmount : 0,
+      },
+      proofs: { challanProof, tollProof },
+      message: "Ride completed",
+    });
+  } catch (e) {
+    console.error("completeBooking error:", e);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };

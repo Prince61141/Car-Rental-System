@@ -1,4 +1,4 @@
-import Car from "../models/Car.js";
+import Car from "../models/car.js";
 import jwt from "jsonwebtoken";
 import multer from "multer";
 import cloudinary from "../utils/cloudinary.js";
@@ -9,6 +9,7 @@ import {
   buildCarCreatedEmail,
   buildCarDeletedEmail,
 } from "../utils/mailTemplates.js";
+import Booking from "../models/Booking.js";
 
 const storage = multer.memoryStorage();
 export const multerInstance = multer({
@@ -495,28 +496,92 @@ export const updateCarAvailability = async (req, res) => {
 
 export const searchCars = async (req, res) => {
   try {
-    const { pickup, dropoff, pickupDate, dropoffDate } = req.query;
+    const {
+      pickup,
+      dropoff,
+      pickupDate,
+      pickupTime,
+      dropoffDate,
+      dropoffTime,
+    } = req.query;
 
     const query = {};
     if (pickup) query["location.city"] = pickup;
+    query.availability = { $ne: false };
 
-    const cars = await Car.find(query);
+    let start = null,
+      end = null;
+    if (pickupDate && pickupTime && dropoffDate && dropoffTime) {
+      const s = new Date(`${pickupDate}T${pickupTime}`);
+      const e = new Date(`${dropoffDate}T${dropoffTime}`);
+      if (Number.isFinite(s.getTime()) && Number.isFinite(e.getTime()) && e > s) {
+        start = s;
+        end = e;
+      }
+    }
 
-    const mappedCars = cars.map((car) => ({
-      _id: car._id,
-      image: Array.isArray(car.image)
-        ? car.image[0]
-        : car.images?.[0] || car.image || "",
-      name: car.title || car.model || "",
-      rating: car.rating || 4.7,
-      price: car.pricePerDay || car.price || 0,
-      tags: [car.transmission, car.fuelType, car.category].filter(Boolean),
-      ...car._doc,
-    }));
+    if (start && end) {
+      const bookedCarIds = await Booking.find({
+        status: { $in: ["pending", "confirmed"] },
+        pickupAt: { $lt: end },
+        dropoffAt: { $gt: start },
+      }).distinct("car");
 
-    res.json({ success: true, cars: mappedCars });
+      if (bookedCarIds.length > 0) {
+        query._id = { $nin: bookedCarIds };
+      }
+    }
+
+    const cars = await Car.find(query).lean();
+
+    return res.json({
+      success: true,
+      cars: cars.map((c) => {
+        const images = Array.isArray(c.image)
+          ? c.image
+          : Array.isArray(c.images)
+          ? c.images
+          : c.image
+          ? [c.image]
+          : [];
+        const firstImage = images[0] || "";
+        const brand = c.brand || c.make || "";
+        const model = c.model || c.variant || "";
+        const name = c.name || c.title || [brand, model].filter(Boolean).join(" ");
+        const fuelVal = c.fuelType || c.fuel || "";
+        const transVal = c.transmission || c.transmissionType || "";
+        const cap = (s) => (s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : "");
+        return {
+          _id: c._id,
+          images,
+          image: images,
+          imageUrl: firstImage,
+
+          name,
+          title: name,
+          brand,
+          model,
+          carnumber: c.carnumber || c.carNumber || c.registration || "",
+          year: c.year || "",
+          description: c.description || "",
+
+          type: c.type || "",
+          fuelType: fuelVal,
+          transmission: transVal,
+          seats: c.seats ?? "",
+
+          pricePerDay: c.pricePerDay ?? c.price ?? 0,
+          price: c.pricePerDay ?? c.price ?? 0,
+
+          tags: [cap(transVal), cap(fuelVal)].filter(Boolean),
+          availability: c.availability !== false,
+          location: c.location || {},
+        };
+      }),
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("searchCars error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

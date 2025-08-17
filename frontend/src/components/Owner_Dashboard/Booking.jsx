@@ -144,6 +144,157 @@ function Booking({ ownerName }) {
     setMapOpen(true);
   };
 
+  const [nowTs, setNowTs] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTs(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [completeTarget, setCompleteTarget] = useState(null);
+  const [carInspected, setCarInspected] = useState(false);
+  const [challanLink, setChallanLink] = useState("");
+  const [fastagLink, setFastagLink] = useState("");
+  const [notes, setNotes] = useState("");
+  const [challanFiles, setChallanFiles] = useState([]);
+  const [tollFiles, setTollFiles] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const canShowComplete = (b) => {
+    if (!b?.dropoffAt) return false;
+    const s = String(b.status || "").toLowerCase();
+    if (["completed", "cancelled"].includes(s)) return false;
+    const drop = new Date(b.dropoffAt).getTime();
+    if (Number.isNaN(drop)) return false;
+    return nowTs >= drop - 60 * 60 * 1000;
+  };
+
+  const openComplete = (b) => {
+    setCompleteTarget(b);
+    setCarInspected(false);
+    setChallanLink("");
+    setFastagLink("");
+    setNotes("");
+    setChallanFiles([]);
+    setTollFiles([]);
+    setCompleteOpen(true);
+  };
+
+  const handleCompleteSubmit = async () => {
+    if (!completeTarget?._id) return;
+    if (!carInspected) {
+      alert("Please confirm you have inspected the car.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const fd = new FormData();
+      fd.append("carInspected", String(carInspected));
+      if (notes) fd.append("notes", notes);
+      if (challanLink) fd.append("challanLink", challanLink);
+      if (fastagLink) fd.append("fastagLink", fastagLink);
+      fd.append("challanAmount", String(Number(challanLink || 0) || 0));
+      fd.append("fastagAmount", String(Number(fastagLink || 0) || 0));
+      challanFiles.forEach((f) => fd.append("challanProof", f));
+      tollFiles.forEach((f) => fd.append("tollProof", f));
+
+      const res = await fetch(
+        `http://localhost:5000/api/bookings/${completeTarget._id}/complete`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
+        throw new Error(data.message || "Failed to complete ride");
+      }
+
+      setBookings((prev) =>
+        prev.map((x) =>
+          String(x._id) === String(completeTarget._id)
+            ? { ...x, status: "completed", completedAt: new Date().toISOString() }
+            : x
+        )
+      );
+
+      setCompleteOpen(false);
+      setCompleteTarget(null);
+    } catch (e) {
+      alert(e.message || "Failed to complete ride");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const canCancel = (b) => {
+    if (!b?.pickupAt) return false;
+    const s = String(b.status || "").toLowerCase();
+    if (["cancelled", "completed"].includes(s)) return false;
+    const pickup = new Date(b.pickupAt).getTime();
+    if (Number.isNaN(pickup)) return false;
+    const threeHoursMs = 3 * 60 * 60 * 1000;
+    return nowTs < pickup - threeHoursMs;
+  };
+
+  const cancelBooking = async (id) => {
+    if (!window.confirm("Cancel this booking?")) return;
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/bookings/${id}/cancel`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Cancel failed");
+      setBookings((prev) =>
+        prev.map((b) => (b._id === id ? { ...b, status: "cancelled" } : b))
+      );
+    } catch (e) {
+      alert(e.message || "Cancel failed");
+    }
+  };
+
+  const Charges = ({ b }) => {
+    const challanAmount = Number(b?.completion?.challanAmount || 0);
+    const fastagAmount = Number(b?.completion?.fastagAmount || 0);
+    const showCharges = String(b.status || "").toLowerCase() === "completed";
+    const approval = (b?.completion?.approval || "pending").toLowerCase();
+    const approvalColor =
+      approval === "approved" ? "bg-green-100 text-green-700" :
+      approval === "rejected" ? "bg-red-100 text-red-700" :
+      "bg-yellow-100 text-yellow-800";
+
+    if (!showCharges) return null;
+    return (
+      <div className="mt-3 bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+        <div className="font-medium text-indigo-900">Additional charges</div>
+        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div className="bg-white/70 rounded border border-indigo-100 p-2">
+            <span className="text-gray-600">Challan charges: </span>
+            <span className="font-semibold">₹{challanAmount.toFixed(0)}</span>
+          </div>
+          <div className="bg-white/70 rounded border border-indigo-100 p-2">
+            <span className="text-gray-600">FASTag/Toll: </span>
+            <span className="font-semibold">₹{fastagAmount.toFixed(0)}</span>
+          </div>
+        </div>
+        {b?.completion?.notes ? (
+          <div className="mt-2 text-xs text-gray-600">Note: {b.completion.notes}</div>
+        ) : null}
+        <div className={`inline-block mt-2 px-2 py-1 rounded text-xs font-medium ${approvalColor}`}>
+          Approval: {approval.charAt(0).toUpperCase() + approval.slice(1)}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       <div className="bg-white rounded-2xl border shadow-sm px-4 sm:px-6 py-4 m-3">
@@ -266,6 +417,22 @@ function Booking({ ownerName }) {
                         >
                           Details
                         </button>
+                        {canShowComplete(b) && (
+                          <button
+                            onClick={() => openComplete(b)}
+                            className="ml-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded font-medium text-sm shadow"
+                          >
+                            Complete Ride
+                          </button>
+                        )}
+                        {canCancel(b) && (
+                          <button
+                            onClick={() => cancelBooking(b._id)}
+                            className="ml-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-medium text-sm shadow"
+                          >
+                            Cancel
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -382,6 +549,8 @@ function Booking({ ownerName }) {
                           )}
                       </div>
                     </div>
+
+                    <Charges b={selected} />
                   </>
                 );
               })()}
@@ -448,6 +617,153 @@ function Booking({ ownerName }) {
               >
                 Open in Google Maps
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW: Complete Ride modal */}
+      {completeOpen && completeTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setCompleteOpen(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-xl w-[92vw] max-w-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h3 className="font-semibold text-[#2A1A3B]">Complete Ride</h3>
+              <button
+                onClick={() => setCompleteOpen(false)}
+                className="px-2 py-1 rounded hover:bg-gray-100"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 space-y-4 text-sm">
+              <div className="bg-gray-50 border rounded-lg p-3">
+                <div className="font-medium text-gray-800 mb-1">
+                  Booking: {completeTarget._id}
+                </div>
+                <div className="text-gray-600">
+                  Dropoff: {formatDateTime(completeTarget.dropoffAt)}
+                </div>
+              </div>
+
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={carInspected}
+                  onChange={(e) => setCarInspected(e.target.checked)}
+                />
+                <span>I have inspected the car (fuel level, damages, items, keys).</span>
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-gray-700 mb-1">
+                    Challan link (optional)
+                  </label>
+                  {/* Quick link to official e-Challan portal */}
+                  <div className="mb-1">
+                    <a
+                      href="https://echallan.parivahan.gov.in/index/accused-challan"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-indigo-600 hover:text-indigo-700 underline text-xs"
+                    >
+                      Open e-Challan portal
+                    </a>
+                  </div>
+                  <input
+                    type="number"
+                    value={challanLink}
+                    onChange={(e) => setChallanLink(e.target.value)}
+                    placeholder="Add Total Challan Amount"
+                    className="w-full border rounded-lg px-3 py-2"
+                  />
+                  <label className="block text-gray-700 mt-2 mb-1">
+                    Challan screenshot(s)
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,application/pdf"
+                    onChange={(e) =>
+                      setChallanFiles(Array.from(e.target.files || []).slice(0, 5))
+                    }
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 mb-1">
+                    FASTag/Toll Amount
+                  </label>
+                  {/* Quick link to FASTag transaction portal */}
+                  <div className="mb-1">
+                    <a
+                      href="https://www.highwaydelite.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-indigo-600 hover:text-indigo-700 underline text-xs"
+                    >
+                      Open FASTag portal
+                    </a>
+                  </div>
+                  <input
+                    type="number"
+                    value={fastagLink}
+                    onChange={(e) => setFastagLink(e.target.value)}
+                    placeholder="Add the Total FASTag Amount Used by Renter"
+                    className="w-full border rounded-lg px-3 py-2"
+                  />
+                  <label className="block text-gray-700 mt-2 mb-1">
+                    Toll receipt(s)
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,application/pdf"
+                    onChange={(e) =>
+                      setTollFiles(Array.from(e.target.files || []).slice(0, 5))
+                    }
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-700 mb-1">Notes (optional)</label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  className="w-full border rounded-lg px-3 py-2"
+                  placeholder="Add any remarks about challan, tolls or vehicle condition..."
+                />
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t flex justify-end gap-2">
+              <button
+                onClick={() => setCompleteOpen(false)}
+                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold"
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCompleteSubmit}
+                disabled={submitting || !carInspected}
+                className={`px-4 py-2 rounded-lg text-white font-semibold ${
+                  submitting || !carInspected
+                    ? "bg-emerald-400 cursor-not-allowed"
+                    : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
+              >
+                {submitting ? "Completing..." : "Complete Ride"}
+              </button>
             </div>
           </div>
         </div>

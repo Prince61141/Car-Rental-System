@@ -2,9 +2,24 @@ import mongoose from "mongoose";
 
 const bookingSchema = new mongoose.Schema(
   {
-    car: { type: mongoose.Schema.Types.ObjectId, ref: "Car", required: true, index: true },
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    car: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Car",
+      required: true,
+      index: true,
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
 
     pickupAt: { type: Date, required: true, index: true },
     dropoffAt: { type: Date, required: true, index: true },
@@ -21,9 +36,31 @@ const bookingSchema = new mongoose.Schema(
     },
     payment: {
       method: { type: String, enum: ["cod", "online"], default: "cod" },
-      status: { type: String, enum: ["unpaid", "paid", "refunded"], default: "unpaid" },
+      status: {
+        type: String,
+        enum: ["unpaid", "paid", "refunded"],
+        default: "unpaid",
+      },
       transactionId: { type: String },
     },
+
+    completion: {
+      carInspected: { type: Boolean, default: false },
+      notes: { type: String, default: "" },
+
+      challanAmount: { type: Number, default: 0 },
+      fastagAmount: { type: Number, default: 0 },
+
+      challanProof: [{ type: String }],
+      tollProof: [{ type: String }],
+      approval: {
+        type: String,
+        enum: ["pending", "approved", "rejected"],
+        default: "pending",
+      },
+    },
+    completedAt: { type: Date },
+    completedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
 );
