@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import logo from "../assets/robot.png";
 import user from "../assets/user.png";
 import "../assets/loading.css";
@@ -110,6 +111,51 @@ function getBotReply(message, state, setBotState) {
   return "I'm here to help! Please ask me anything about car rentals.";
 }
 
+function parseAiCars(text = "") {
+  const raw = String(text || "");
+  const parts = raw
+    .split(/\n?\s*\d+\.\s+/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const cars = [];
+  for (const part of parts) {
+    const looksLikeCar =
+      /\*\*[^*]+\*\*/.test(part) ||
+      /Transmission:/i.test(part) ||
+      /Fuel\s*Type:/i.test(part);
+    if (!looksLikeCar) continue;
+
+    const nameMatch = part.match(/\*\*([^*]+)\*\*/);
+    const transmissionMatch = part.match(/Transmission:\**\s*([A-Za-z]+)/i);
+    const fuelMatch = part.match(/Fuel\s*Type:\**\s*([A-Za-z]+)/i);
+    const seatsMatch = part.match(/Seats:\**\s*(\d+)/i);
+    const priceMatch = part.match(/Price\/Day:\**\s*₹?\s*([\d,]+)/i);
+    const imgMatch = part.match(/!\[[^\]]*\]\(([^)]+)\)/);
+
+    const pricePerDay = priceMatch
+      ? Number(String(priceMatch[1]).replace(/[^\d]/g, "")) || 0
+      : 0;
+
+    const car = {
+      id: `${nameMatch ? nameMatch[1].trim() : "car"}-${pricePerDay}-${
+        cars.length
+      }`,
+      name: nameMatch ? nameMatch[1].trim() : "",
+      transmission: transmissionMatch ? transmissionMatch[1] : "",
+      fuelType: fuelMatch ? fuelMatch[1] : "",
+      seats: seatsMatch ? Number(seatsMatch[1]) : undefined,
+      pricePerDay,
+      imageUrl: imgMatch ? imgMatch[1] : "",
+    };
+
+    if (car.name || car.imageUrl || car.transmission || car.fuelType) {
+      cars.push(car);
+    }
+  }
+  return cars;
+}
+
 export default function Chatbot() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -118,7 +164,16 @@ export default function Chatbot() {
   ]);
   const [input, setInput] = useState("");
   const [botState, setBotState] = useState(null);
+  const [aiEnabled, setAiEnabled] = useState(true);
   const messagesEndRef = useRef(null);
+
+  const navigate = useNavigate();
+
+  const handleCardClick = (car) => {
+    const id = (car?.id || "").trim();
+    const q = id ? `/${encodeURIComponent(id)}` : "";
+    navigate(`/rent${q}`);
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -132,17 +187,59 @@ export default function Chatbot() {
     }
   }, [open]);
 
-  const sendMessage = (e) => {
+  const sendMessage = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
-    setMessages((msgs) => [...msgs, { from: "user", text: input }]);
-    setTimeout(() => {
+    const userMsg = { from: "user", text: input };
+    setMessages((msgs) => [...msgs, userMsg]);
+    setInput("");
+
+    if (!aiEnabled) {
+      // fallback to keyword bot
+      setTimeout(() => {
+        setMessages((msgs) => [
+          ...msgs,
+          {
+            from: "bot",
+            text: getBotReply(userMsg.text, botState, setBotState),
+          },
+        ]);
+      }, 600);
+      return;
+    }
+
+    try {
+      const conv = [
+        { role: "system", content: "Keep answers short." },
+        ...messages.map((m) => ({
+          role: m.from === "user" ? "user" : "assistant",
+          content: m.text,
+        })),
+        { role: "user", content: userMsg.text },
+      ];
+
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch("http://localhost:5000/api/ai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ messages: conv }),
+      });
+      const data = await res.json();
+      const replyText =
+        (res.ok && data?.success && data?.reply) ||
+        "Sorry, I couldn't process that. Please try again.";
+
+      const cars = parseAiCars(replyText);
+      setMessages((msgs) => [...msgs, { from: "bot", text: replyText, cars }]);
+    } catch {
       setMessages((msgs) => [
         ...msgs,
-        { from: "bot", text: getBotReply(input, botState, setBotState) },
+        { from: "bot", text: "Network error. Please try again." },
       ]);
-    }, 600);
-    setInput("");
+    }
   };
 
   return (
@@ -171,40 +268,107 @@ export default function Chatbot() {
             className="flex-1 px-4 py-2 overflow-y-auto chatbot"
             style={{ maxHeight: "380px" }}
           >
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`my-2 flex ${
-                  msg.from === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                {msg.from === "bot" && (
-                  <img
-                    src={logo}
-                    alt="Bot"
-                    className="w-9 h-9 rounded-full mr-2 self-center"
-                  />
-                )}
-
-                <span
-                  className={`max-w-[75%] px-3 py-2 rounded-lg text-sm break-words ${
-                    msg.from === "user"
-                      ? "bg-blue-100 text-blue-900"
-                      : "bg-gray-100 text-gray-700"
+            {messages.map((msg, idx) => {
+              const hasCars = Array.isArray(msg.cars) && msg.cars.length > 0;
+              return (
+                <div
+                  key={idx}
+                  className={`my-2 flex ${
+                    msg.from === "user" ? "justify-end" : "justify-start"
                   }`}
                 >
-                  {msg.text}
-                </span>
+                  {msg.from === "bot" && (
+                    <img
+                      src={logo}
+                      alt="Bot"
+                      className="w-9 h-9 rounded-full mr-2 self-center"
+                    />
+                  )}
 
-                {msg.from === "user" && (
-                  <img
-                    src={user}
-                    alt="user"
-                    className="w-8 h-8 rounded-full ml-2 self-end align-self-center"
-                  />
-                )}
-              </div>
-            ))}
+                  <span
+                    className={`max-w-[75%] px-3 py-2 rounded-lg text-sm break-words ${
+                      msg.from === "user"
+                        ? "bg-blue-100 text-blue-900"
+                        : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {/* Hide raw text when cars are present */}
+                    {!hasCars && msg.text}
+
+                    {/* Small card list for cars */}
+                    {hasCars && (
+                      <div className="grid grid-cols-1 gap-2">
+                        {msg.cars.map((c) => (
+                          <div
+                            key={c.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => handleCardClick(c)}
+                            onKeyDown={(e) =>
+                              e.key === "Enter" ? handleCardClick(c) : null
+                            }
+                            className="border rounded-lg overflow-hidden bg-white text-gray-800 cursor-pointer hover:shadow-md transition"
+                            title="Click to book this car"
+                          >
+                            <div className="aspect-video bg-gray-100">
+                              {c.imageUrl ? (
+                                <img
+                                  src={c.imageUrl}
+                                  alt={c.name || "Car"}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
+                                  No image
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-2">
+                              <div className="font-semibold text-sm truncate">
+                                {c.name || "Car"}
+                              </div>
+                              <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+                                <div className="bg-gray-50 border rounded px-2 py-1">
+                                  <span className="text-gray-500">
+                                    Transmission:
+                                  </span>{" "}
+                                  {c.transmission || "—"}
+                                </div>
+                                <div className="bg-gray-50 border rounded px-2 py-1">
+                                  <span className="text-gray-500">
+                                    Fuel Type:
+                                  </span>{" "}
+                                  {c.fuelType || "—"}
+                                </div>
+                                <div className="bg-gray-50 border rounded px-2 py-1">
+                                  <span className="text-gray-500">Seats:</span>{" "}
+                                  {Number.isFinite(c.seats) ? c.seats : "—"}
+                                </div>
+                                <div className="bg-gray-50 border rounded px-2 py-1">
+                                  <span className="text-gray-500">
+                                    Price/Day:
+                                  </span>{" "}
+                                  ₹{Number(c.pricePerDay || 0).toFixed(0)}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </span>
+
+                  {msg.from === "user" && (
+                    <img
+                      src={user}
+                      alt="user"
+                      className="w-8 h-8 rounded-full ml-2 self-end align-self-center"
+                    />
+                  )}
+                </div>
+              );
+            })}
 
             <div ref={messagesEndRef} />
           </div>

@@ -9,6 +9,7 @@ import multer from "multer";
 const HOUR_MS = 60 * 60 * 1000;
 const MIN_LEAD_HOURS = 3;
 const MIN_DURATION_HOURS = 4;
+const LATE_GRACE_MINUTES = 15; // no charge for first 15 minutes
 
 const toDate = (v) => {
   const d = new Date(v);
@@ -679,6 +680,39 @@ export const completeBooking = async (req, res) => {
     const challanProof = norm(challanFiles || []);
     const tollProof = norm(tollFiles || []);
 
+    const perHourRate = Math.max(
+      0,
+      Number(booking.pricePerDay || booking.car?.pricePerDay || 0) / 24
+    );
+
+    const clientLateMinutesRaw = Number(req.body?.lateMinutes);
+    const clientLateMinutes = Number.isFinite(clientLateMinutesRaw)
+      ? Math.max(0, Math.floor(clientLateMinutesRaw))
+      : null;
+
+    let lateMinutes = 0;
+    let lateHours = 0;
+    let lateFee = 0;
+
+    if (clientLateMinutes !== null) {
+      const billableMin = Math.max(0, clientLateMinutes - LATE_GRACE_MINUTES);
+      const billableHours = billableMin > 0 ? Math.ceil(billableMin / 60) : 0;
+      lateMinutes = clientLateMinutes;
+      lateHours = billableHours;
+      lateFee = billableHours > 0 ? Math.round(billableHours * perHourRate) : 0;
+    } else {
+      const now = Date.now();
+      const dropTs = new Date(booking.dropoffAt).getTime();
+      const latenessMs = Math.max(0, now - dropTs);
+      const lateMinutesRaw = Math.floor(latenessMs / (60 * 1000));
+      const billableMin = Math.max(0, lateMinutesRaw - LATE_GRACE_MINUTES);
+      lateMinutes = lateMinutesRaw;
+      lateHours = billableMin > 0 ? Math.ceil(billableMin / 60) : 0;
+      lateFee = lateHours > 0 ? Math.round(lateHours * perHourRate) : 0;
+    }
+
+    const approval = "pending";
+
     booking.status = "completed";
     booking.completedAt = new Date();
     booking.completedBy = req.user?._id || booking.completedBy;
@@ -689,6 +723,9 @@ export const completeBooking = async (req, res) => {
       fastagAmount: Number.isFinite(fastagAmount) ? fastagAmount : 0,
       challanProof,
       tollProof,
+      lateMinutes,
+      lateHours,
+      lateFee,
       approval,
     };
     if (typeof booking.markModified === "function") booking.markModified("completion");
@@ -700,6 +737,9 @@ export const completeBooking = async (req, res) => {
     if (Number(fastagAmount) > 0) {
       await logExtraChargeTransactions(booking, booking.car, "FASTag/Toll charges", fastagAmount);
     }
+    if (lateFee > 0) {
+      await logExtraChargeTransactions(booking, booking.car, "Late return fee", lateFee);
+    }
 
     return res.json({
       success: true,
@@ -707,6 +747,9 @@ export const completeBooking = async (req, res) => {
       charges: {
         challanAmount: Number.isFinite(challanAmount) ? challanAmount : 0,
         fastagAmount: Number.isFinite(fastagAmount) ? fastagAmount : 0,
+        lateFee,
+        lateMinutes,
+        lateHours,
       },
       proofs: { challanProof, tollProof },
       message: "Ride completed",

@@ -160,6 +160,13 @@ function Booking({ ownerName }) {
   const [tollFiles, setTollFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
+  // NEW: late return inputs and computed fee
+  const [lateHours, setLateHours] = useState("");
+  const [lateMinutes, setLateMinutes] = useState("");
+  const [lateFee, setLateFee] = useState(0);
+  const [perHourRate, setPerHourRate] = useState(0);
+  const LATE_GRACE_MIN = 15;
+
   const canShowComplete = (b) => {
     if (!b?.dropoffAt) return false;
     const s = String(b.status || "").toLowerCase();
@@ -177,8 +184,40 @@ function Booking({ ownerName }) {
     setNotes("");
     setChallanFiles([]);
     setTollFiles([]);
+
+    const pricePerDay =
+      Number(
+        b?.pricePerDay ??
+          b?.car?.pricePerDay ??
+          b?.totalAmount /
+            Math.max(
+              1,
+              (new Date(b.dropoffAt) - new Date(b.pickupAt)) /
+                (24 * 60 * 60 * 1000)
+            )
+      ) || 0;
+    setPerHourRate(Math.max(0, pricePerDay / 24));
+    setLateHours("");
+    setLateMinutes("");
+    setLateFee(0);
+
     setCompleteOpen(true);
   };
+
+  useEffect(() => {
+    const h = parseInt(lateHours, 10);
+    const m = parseInt(lateMinutes, 10);
+    const hours = Number.isFinite(h) && h > 0 ? h : 0;
+    const mins = Number.isFinite(m) && m > 0 ? Math.min(59, m) : 0;
+    const totalMin = hours * 60 + mins;
+
+    // 15-minute grace, then round up to next hour
+    const billableMin = Math.max(0, totalMin - LATE_GRACE_MIN);
+    const billableHours = billableMin > 0 ? Math.ceil(billableMin / 60) : 0;
+    const fee = Math.round(billableHours * perHourRate);
+
+    setLateFee(fee);
+  }, [lateHours, lateMinutes, perHourRate]);
 
   const handleCompleteSubmit = async () => {
     if (!completeTarget?._id) return;
@@ -198,6 +237,13 @@ function Booking({ ownerName }) {
       challanFiles.forEach((f) => fd.append("challanProof", f));
       tollFiles.forEach((f) => fd.append("tollProof", f));
 
+      const h = parseInt(lateHours, 10) || 0;
+      const m = parseInt(lateMinutes, 10) || 0;
+      const totalLateMinutes =
+        Math.max(0, h) * 60 + Math.max(0, Math.min(59, m));
+      fd.append("lateMinutes", String(totalLateMinutes));
+      fd.append("lateFee", String(Number.isFinite(lateFee) ? lateFee : 0));
+
       const res = await fetch(
         `http://localhost:5000/api/bookings/${completeTarget._id}/complete`,
         {
@@ -211,12 +257,49 @@ function Booking({ ownerName }) {
         throw new Error(data.message || "Failed to complete ride");
       }
 
+      const completedAtIso = new Date().toISOString();
       setBookings((prev) =>
-        prev.map((x) =>
-          String(x._id) === String(completeTarget._id)
-            ? { ...x, status: "completed", completedAt: new Date().toISOString() }
-            : x
-        )
+        prev.map((x) => {
+          if (String(x._id) !== String(completeTarget._id)) return x;
+          const apiComp = data?.booking?.completion || {};
+          const challanAmountNum =
+            Number(
+              apiComp.challanAmount ??
+                data?.charges?.challanAmount ??
+                challanLink ??
+                0
+            ) || 0;
+          const fastagAmountNum =
+            Number(
+              apiComp.fastagAmount ??
+                data?.charges?.fastagAmount ??
+                fastagLink ??
+                0
+            ) || 0;
+          const lateMinutesNum =
+            Number(
+              apiComp.lateMinutes ??
+                data?.charges?.lateMinutes ??
+                totalLateMinutes
+            ) || 0;
+          const lateFeeNum =
+            Number(apiComp.lateFee ?? data?.charges?.lateFee ?? lateFee) || 0;
+          return {
+            ...x,
+            status: "completed",
+            completedAt: completedAtIso,
+            completion: {
+              ...(x.completion || {}),
+              ...apiComp,
+              challanAmount: challanAmountNum,
+              fastagAmount: fastagAmountNum,
+              lateMinutes: lateMinutesNum,
+              lateFee: lateFeeNum,
+              approval: apiComp.approval || "pending",
+              notes: apiComp.notes || notes || "",
+            },
+          };
+        })
       );
 
       setCompleteOpen(false);
@@ -244,11 +327,8 @@ function Booking({ ownerName }) {
       const res = await fetch(
         `http://localhost:5000/api/bookings/${id}/cancel`,
         {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          method: "POST", // CHANGED: backend expects POST
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
       const data = await res.json();
@@ -264,33 +344,73 @@ function Booking({ ownerName }) {
   const Charges = ({ b }) => {
     const challanAmount = Number(b?.completion?.challanAmount || 0);
     const fastagAmount = Number(b?.completion?.fastagAmount || 0);
+    const lateMinutes = Number(b?.completion?.lateMinutes || 0); // NEW
+    const lateHoursCalc = lateMinutes > 0 ? Math.ceil(lateMinutes / 60) : 0; // NEW
+    const lateFeeShown = Number(b?.completion?.lateFee || 0); // NEW
+    const totalAdditional =
+      (Number.isFinite(challanAmount) ? challanAmount : 0) +
+      (Number.isFinite(fastagAmount) ? fastagAmount : 0) +
+      (Number.isFinite(lateFeeShown) ? lateFeeShown : 0); // NEW
+
     const showCharges = String(b.status || "").toLowerCase() === "completed";
     const approval = (b?.completion?.approval || "pending").toLowerCase();
     const approvalColor =
-      approval === "approved" ? "bg-green-100 text-green-700" :
-      approval === "rejected" ? "bg-red-100 text-red-700" :
-      "bg-yellow-100 text-yellow-800";
+      approval === "approved"
+        ? "bg-green-100 text-green-700"
+        : approval === "rejected"
+        ? "bg-red-100 text-red-700"
+        : "bg-yellow-100 text-yellow-800";
 
     if (!showCharges) return null;
     return (
       <div className="mt-3 bg-indigo-50 border border-indigo-200 rounded-lg p-3">
-        <div className="font-medium text-indigo-900">Additional charges</div>
-        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+        <div className="flex items-center justify-between">
+          <div className="font-medium text-indigo-900">Additional charges</div>
+          <div
+            className={`px-2 py-0.5 rounded text-xs font-semibold ${approvalColor}`}
+          >
+            Approval: {approval.charAt(0).toUpperCase() + approval.slice(1)}
+          </div>
+        </div>
+        <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
           <div className="bg-white/70 rounded border border-indigo-100 p-2">
             <span className="text-gray-600">Challan charges: </span>
-            <span className="font-semibold">₹{challanAmount.toFixed(0)}</span>
+            <span className="font-semibold">
+              ₹{(challanAmount || 0).toFixed(0)}
+            </span>
           </div>
           <div className="bg-white/70 rounded border border-indigo-100 p-2">
             <span className="text-gray-600">FASTag/Toll: </span>
-            <span className="font-semibold">₹{fastagAmount.toFixed(0)}</span>
+            <span className="font-semibold">
+              ₹{(fastagAmount || 0).toFixed(0)}
+            </span>
+          </div>
+          <div className="bg-white/70 rounded border border-indigo-100 p-2">
+            <span className="text-gray-600">Late fee: </span>
+            <span className="font-semibold">
+              ₹{(lateFeeShown || 0).toFixed(0)}
+            </span>
+          </div>
+        </div>
+        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div className="bg-white/70 rounded border border-indigo-100 p-2">
+            <span className="text-gray-600">Late time: </span>
+            <span className="font-semibold">
+              {lateMinutes > 0
+                ? `${lateMinutes} min (${lateHoursCalc} hr)`
+                : "On time"}
+            </span>
+          </div>
+          <div className="bg-white/70 rounded border border-indigo-100 p-2">
+            <span className="text-gray-600">Total additional: </span>
+            <span className="font-semibold">₹{totalAdditional.toFixed(0)}</span>
           </div>
         </div>
         {b?.completion?.notes ? (
-          <div className="mt-2 text-xs text-gray-600">Note: {b.completion.notes}</div>
+          <div className="mt-2 text-xs text-gray-600">
+            Note: {b.completion.notes}
+          </div>
         ) : null}
-        <div className={`inline-block mt-2 px-2 py-1 rounded text-xs font-medium ${approvalColor}`}>
-          Approval: {approval.charAt(0).toUpperCase() + approval.slice(1)}
-        </div>
       </div>
     );
   };
@@ -298,39 +418,36 @@ function Booking({ ownerName }) {
   return (
     <div>
       <div className="bg-white rounded-2xl border shadow-sm px-4 sm:px-6 py-4 m-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                Welcome, {ownerName || "Owner"}!
-              </h1>
-              <p className="text-gray-600 text-sm">
-                Keep up the great work! Your cars are helping people travel
-              </p>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+              Welcome, {ownerName || "Owner"}!
+            </h1>
+            <p className="text-gray-600 text-sm">
+              Keep up the great work! Your cars are helping people travel
+            </p>
+          </div>
 
-            <div className="flex sm:flex-col items-center sm:items-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowListCar(true)}
-                className="inline-flex items-center gap-2 bg-[#2f1c53] hover:bg-[#3d3356] text-white font-medium text-sm px-4 py-2 rounded-lg shadow transition"
-              >
-                <FiPlus size={18} />
-                List A new Car
-              </button>
-              <div className="flex items-center text-sm text-gray-700">
-                <MdDirectionsCar className="mr-2" size={18} />
-                {loadingCars ? "Loading..." : `${carsCount} Active Listing`}
-              </div>
+          <div className="flex sm:flex-col items-center sm:items-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowListCar(true)}
+              className="inline-flex items-center gap-2 bg-[#2f1c53] hover:bg-[#3d3356] text-white font-medium text-sm px-4 py-2 rounded-lg shadow transition"
+            >
+              <FiPlus size={18} />
+              List A new Car
+            </button>
+            <div className="flex items-center text-sm text-gray-700">
+              <MdDirectionsCar className="mr-2" size={18} />
+              {loadingCars ? "Loading..." : `${carsCount} Active Listing`}
             </div>
           </div>
         </div>
+      </div>
 
-        {showListCar && (
-          <ListCar
-            onCarAdded={() => {}}
-            onClose={() => setShowListCar(false)}
-          />
-        )}
+      {showListCar && (
+        <ListCar onCarAdded={() => {}} onClose={() => setShowListCar(false)} />
+      )}
       <div className="bg-white rounded-xl shadow p-6 mt-6 ml-3 mr-3">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">Live Car Status</h2>
@@ -657,7 +774,9 @@ function Booking({ ownerName }) {
                   checked={carInspected}
                   onChange={(e) => setCarInspected(e.target.checked)}
                 />
-                <span>I have inspected the car (fuel level, damages, items, keys).</span>
+                <span>
+                  I have inspected the car (fuel level, damages, items, keys).
+                </span>
               </label>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -691,7 +810,9 @@ function Booking({ ownerName }) {
                     multiple
                     accept="image/*,application/pdf"
                     onChange={(e) =>
-                      setChallanFiles(Array.from(e.target.files || []).slice(0, 5))
+                      setChallanFiles(
+                        Array.from(e.target.files || []).slice(0, 5)
+                      )
                     }
                     className="w-full"
                   />
@@ -734,14 +855,57 @@ function Booking({ ownerName }) {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-gray-700 mb-1">Late hours</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={lateHours}
+                    onChange={(e) => setLateHours(e.target.value)}
+                    placeholder="0"
+                    className="w-full border rounded-lg px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-1">
+                    Late minutes
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    step={1}
+                    value={lateMinutes}
+                    onChange={(e) => setLateMinutes(e.target.value)}
+                    placeholder="0"
+                    className="w-full border rounded-lg px-3 py-2"
+                  />
+                  <div className="text-[11px] text-gray-500 mt-1">
+                    First {LATE_GRACE_MIN} minutes are free.
+                  </div>
+                </div>
+                <div className="bg-gray-50 border rounded-lg p-3">
+                  <p className="text-gray-600 text-sm mb-1">
+                    Per-hour rate: <span className="font-semibold text-black"> ₹{Math.round(perHourRate)}</span>
+                  </p>
+                  <p className="text-gray-600 text-sm">
+                    Late fee: <span className="font-semibold text-black">₹{Number(lateFee || 0).toFixed(0)}</span>
+                  </p>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-gray-700 mb-1">Notes (optional)</label>
+                <label className="block text-gray-700 mb-1">
+                  Notes (optional)
+                </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add any remarks about damages, fuel level, missing items, etc."
                   rows={3}
                   className="w-full border rounded-lg px-3 py-2"
-                  placeholder="Add any remarks about challan, tolls or vehicle condition..."
                 />
               </div>
             </div>

@@ -214,8 +214,8 @@ function Booking({ openId = null, onOpened }) {
                       className="text-[#2A1A3B] hover:underline"
                     >
                       {ownerPhone}
-                    </a>
-                  </div>
+                      </a>
+                    </div>
                 ) : null}
                 {carNumber ? (
                   <div className="bg-gray-50 border rounded-lg p-2">
@@ -295,7 +295,7 @@ function Booking({ openId = null, onOpened }) {
     const hours = Math.round(durationHrs % 24);
     const statusClass =
       statusStyles[(b.status || "").toLowerCase()] ||
-      "bg-gray-100 text-gray-700"; // FIX: normalize
+      "bg-gray-100 text-gray-700";
     const canCancel =
       b.status === "confirmed" && new Date() < new Date(b.pickupAt);
 
@@ -303,6 +303,13 @@ function Booking({ openId = null, onOpened }) {
     const fastagAmount = Number(b?.completion?.fastagAmount || 0);
     const approval = (b?.completion?.approval || "pending").toLowerCase();
     const showCharges = String(b.status || "").toLowerCase() === "completed";
+
+    // NEW: late fee/time
+    const lateMinutes = Number(b?.completion?.lateMinutes || 0);
+    const lateHours =
+      Number(b?.completion?.lateHours) ||
+      (lateMinutes > 0 ? Math.ceil(lateMinutes / 60) : 0);
+    const lateFee = Number(b?.completion?.lateFee || 0);
 
     return (
       <div className="border rounded-2xl overflow-hidden bg-white shadow-sm">
@@ -422,29 +429,35 @@ function Booking({ openId = null, onOpened }) {
                         : "bg-yellow-100 text-yellow-800"
                     }`}
                   >
-                    Approval:{" "}
-                    {approval.charAt(0).toUpperCase() + approval.slice(1)}
+                    Approval: {approval.charAt(0).toUpperCase() + approval.slice(1)}
                   </div>
                 </div>
                 <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                   <div className="bg-white/70 rounded border border-indigo-100 p-2">
                     <span className="text-gray-600">Challan charges: </span>
-                    <span className="font-semibold">
-                      ₹{challanAmount.toFixed(0)}
-                    </span>
+                    <span className="font-semibold">₹{challanAmount.toFixed(0)}</span>
                   </div>
                   <div className="bg-white/70 rounded border border-indigo-100 p-2">
                     <span className="text-gray-600">FASTag/Toll: </span>
-                    <span className="font-semibold">
-                      ₹{fastagAmount.toFixed(0)}
-                    </span>
+                    <span className="font-semibold">₹{fastagAmount.toFixed(0)}</span>
+                  </div>
+                  <div className="bg-white/70 rounded border border-indigo-100 p-2">
+                    <span className="text-gray-600">Late fee: </span>
+                    <span className="font-semibold">₹{(lateFee || 0).toFixed(0)}</span>
                   </div>
                 </div>
-                {b?.completion?.notes ? (
-                  <div className="mt-2 text-xs text-gray-600">
-                    Note: {b.completion.notes}
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                  <div className="bg-white/70 rounded border border-indigo-100 p-2">
+                    <span className="text-gray-600">Late time: </span>
+                    <span className="font-semibold">
+                      {lateMinutes > 0 ? `${lateMinutes} min (${lateHours} hr)` : "On time"}
+                    </span>
                   </div>
+                  
+                {b?.completion?.notes ? (
+                  <div className="mt-2 text-xs text-gray-600">Note: {b.completion.notes}</div>
                 ) : null}
+                </div>
               </div>
             )}
           </div>

@@ -50,9 +50,14 @@ const bookingSchema = new mongoose.Schema(
 
       challanAmount: { type: Number, default: 0 },
       fastagAmount: { type: Number, default: 0 },
+      lateTime: { type: Number, default: 0 },
+      latefeeAmount: { type: Number, default: 0 },
 
       challanProof: [{ type: String }],
       tollProof: [{ type: String }],
+      lateMinutes: { type: Number, default: 0 },
+      lateHours: { type: Number, default: 0 },
+      lateFee: { type: Number, default: 0 },
       approval: {
         type: String,
         enum: ["pending", "approved", "rejected"],
