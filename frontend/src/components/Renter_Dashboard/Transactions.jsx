@@ -74,7 +74,6 @@ const getRenterId = async (headers) => {
   const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
   const fromJwt = token ? decodeJwtId(token) : null;
   if (fromJwt) {
-    localStorage.setItem("renterId", fromJwt);
     return fromJwt;
   }
   try {
@@ -83,7 +82,6 @@ const getRenterId = async (headers) => {
       const data = await res.json();
       const id = data?.user?._id || data?._id || data?.id || null;
       if (id) {
-        localStorage.setItem("renterId", id);
         return id;
       }
     }

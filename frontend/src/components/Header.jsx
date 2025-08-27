@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Navbar({ scrollEffect }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState("");
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState({
+    role: "",
+    photo: "",
+  });
 
   useEffect(() => {
     if (!scrollEffect) return;
@@ -12,6 +18,35 @@ export default function Navbar({ scrollEffect }) {
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, [scrollEffect]);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        return;
+      }
+      try {
+        const res = await fetch("http://localhost:5000/api/owners/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setProfile({
+            ...data,
+            aadhar: data.document?.Aadhar || "",
+            pan: data.document?.PAN || "",
+            photo: data.photo || "",
+          });
+          setPhotoPreview(data.photo || "");
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const token = localStorage.getItem("token");
 
   return (
     <nav
@@ -58,15 +93,47 @@ export default function Navbar({ scrollEffect }) {
 
         {/* Desktop Buttons */}
         <div className="hidden md:flex gap-4">
-          <button className="px-5 py-2 rounded-lg border border-[#2f2240] text-[#2f2240] font-semibold uppercase hover:bg-[#f6f4fa] transition">
-            Become a Host
-          </button>
-            <Link
-              to="/login"
-              className="px-5 py-2 rounded-lg bg-[#2f2240] text-white font-semibold uppercase hover:bg-[#3d3356] transition"
+          {!token ? (
+            <>
+              <button className="px-5 py-2 rounded-lg border border-[#2f2240] text-[#2f2240] font-semibold uppercase hover:bg-[#f6f4fa] transition">
+                Become a Host
+              </button>
+              <Link
+                to="/login"
+                className="px-5 py-2 rounded-lg bg-[#2f2240] text-white font-semibold uppercase hover:bg-[#3d3356] transition"
+              >
+                Login/Sign Up
+              </Link>
+            </>
+          ) : (
+            <button
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#2f2240] bg-[#f6f4fa] hover:bg-[#ecebee] transition"
+              onClick={() =>
+                navigate(
+                  profile.role === "admin"
+                    ? "/admin/dashboard"
+                    : profile.role === "peer-owner"
+                    ? "/peer-owner/dashboard"
+                    : profile.role === "renter"
+                    ? "/renter/dashboard"
+                    : "/login"
+                )
+              }
             >
-              Login/Sign Up
-            </Link>
+              <img
+                src={
+                  profile.photo ||
+                  "https://ui-avatars.com/api/?name=" +
+                    encodeURIComponent(profile.name || "User")
+                }
+                alt="Profile"
+                className="w-8 h-8 rounded-full object-cover border"
+              />
+              <span className="font-semibold text-[#2f2240]">
+                {profile.name || "Profile"}
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Mobile Menu Icon */}
@@ -100,15 +167,43 @@ export default function Navbar({ scrollEffect }) {
             </li>
           </ul>
           <div className="flex flex-col gap-2 mt-4">
-            <button className="px-4 py-2 rounded-lg border border-[#2f2240] text-[#2f2240] font-semibold uppercase">
-              Become a Host
-            </button>
-            <Link
-              to="/login"
-              className="px-5 py-2 rounded-lg bg-[#2f2240] text-white font-semibold uppercase hover:bg-[#3d3356] transition flex items-center justify-center"
-            >
-              Login/Sign Up
-            </Link>
+            {!token ? (
+              <>
+                <button className="px-4 py-2 rounded-lg border border-[#2f2240] text-[#2f2240] font-semibold uppercase">
+                  Become a Host
+                </button>
+                <Link
+                  to="/login"
+                  className="px-5 py-2 rounded-lg bg-[#2f2240] text-white font-semibold uppercase hover:bg-[#3d3356] transition flex items-center justify-center"
+                >
+                  Login/Sign Up
+                </Link>
+              </>
+            ) : (
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#2f2240] bg-[#f6f4fa] hover:bg-[#ecebee] transition"
+                onClick={() =>
+                  navigate(
+                    profile.role === "admin"
+                      ? "/admin/dashboard"
+                      : profile.role === "peer-owner"
+                      ? "/peer-owner/dashboard"
+                      : profile.role === "renter"
+                      ? "/renter/dashboard"
+                      : "/login"
+                  )
+                }
+              >
+                <img
+                  src={profile.photo}
+                  alt="Profile"
+                  className="w-8 h-8 rounded-full object-cover border"
+                />
+                <span className="font-semibold text-[#2f2240]">
+                  {profile.name || "Profile"}
+                </span>
+              </button>
+            )}
           </div>
         </div>
       )}

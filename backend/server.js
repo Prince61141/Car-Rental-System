@@ -10,6 +10,7 @@ import renterRoutes from "./routes/renterRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config();
 connectDB();
@@ -27,6 +28,7 @@ app.use("/api/renters", renterRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api", aiRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/", (req, res) => {
   res.send("🚗 Car Rental API is running...");

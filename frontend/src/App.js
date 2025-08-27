@@ -10,6 +10,7 @@ import Contact from "./pages/Contact";
 import About from "./pages/About";
 import Owner_Dashboard from "./pages/Owner_Dashboard";
 import Renter_Dashboard from "./pages/Renter_Dashboard";
+import Admin_Dashboard from "./pages/Admin_Dashboard";
 import EditCar from "./components/Owner_Dashboard/EditCar";
 import RentCarPage from "./pages/RentCarPage";
 import CarsPage from "./pages/CarsPage";
@@ -28,6 +29,7 @@ function App() {
         <Route path="*" element={<NotFound />} />
         <Route path="/peer-owner/dashboard" element={<Owner_Dashboard />} />
         <Route path="/renter/dashboard" element={<Renter_Dashboard />} />
+        <Route path="/admin/dashboard" element={<Admin_Dashboard />} />
         <Route path="/edit-car/:id" element={<EditCar />} />
         <Route path="/rent/:id" element={<RentCarPage />} />
         <Route path="/cars" element={<CarsPage />} />

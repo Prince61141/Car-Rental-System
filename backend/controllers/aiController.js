@@ -126,7 +126,11 @@ async function callTool(req, name, args) {
     case "search_cars": {
       const q = new URLSearchParams(args);
       const r = await fetch(`${base}/api/cars/search?` + q.toString(), { headers });
-      return await r.json();
+      const result = await r.json();
+      if (Array.isArray(result.cars) && result.cars.length === 0) {
+        return { success: false, message: "No cars available in that city for your criteria." };
+      }
+      return result;
     }
     case "quote_booking": {
       const r = await fetch(`${base}/api/bookings/quote`, {
@@ -193,15 +197,24 @@ export async function aiChat(req, res) {
     const msg = response.choices[0].message;
     if (msg.tool_calls && msg.tool_calls.length > 0) {
       const toolResults = [];
+      let earlyExit = null;
       for (const toolCall of msg.tool_calls) {
         const { name, arguments: argsStr } = toolCall.function;
         const args = argsStr ? JSON.parse(argsStr) : {};
         const result = await callTool(req, name, args);
+        // If search_cars returned no cars, reply immediately
+        if (name === "search_cars" && result.success === false && result.message) {
+          earlyExit = result.message;
+          break;
+        }
         toolResults.push({
           tool_call_id: toolCall.id,
           name,
           result,
         });
+      }
+      if (earlyExit) {
+        return res.json({ success: true, reply: earlyExit });
       }
 
       const followup = await openai.chat.completions.create({

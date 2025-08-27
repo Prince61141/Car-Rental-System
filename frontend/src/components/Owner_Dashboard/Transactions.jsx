@@ -27,7 +27,6 @@ const getOwnerId = async (headers) => {
   const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
   const fromJwt = token ? decodeJwtOwnerId(token) : null;
   if (fromJwt) {
-    localStorage.setItem("ownerId", fromJwt);
     return fromJwt;
   }
 
@@ -38,7 +37,6 @@ const getOwnerId = async (headers) => {
       const id =
         data?.user?._id || data?._id || data?.id || data?.user?.id || null;
       if (id) {
-        localStorage.setItem("ownerId", id);
         return id;
       }
     }
