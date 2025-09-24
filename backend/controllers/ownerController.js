@@ -5,6 +5,9 @@ import sendEmail from "../utils/sendEmail.js";
 import { generateAndSendOtp, verifyOtp } from "../utils/sendOtp.js";
 import cloudinary from "../utils/cloudinary.js";
 import multer from "multer";
+import PayoutDetails from "../models/PayoutDetails.js";
+import Car from "../models/Car.js";
+import Booking from "../models/Booking.js";
 
 export const getMe = async (req, res) => {
   try {
@@ -195,3 +198,192 @@ export const updateMe = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+export const getPayoutDetails = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const ownerId = decoded.id;
+
+    const payout = await PayoutDetails.findOne({ owner: ownerId });
+    res.json({ payout });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const savePayoutDetails = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const ownerId = decoded.id;
+
+    const data = {
+      owner: ownerId,
+      bankName: req.body.bankName,
+      accountNumber: req.body.accountNumber,
+      ifsc: req.body.ifsc,
+      accountHolder: req.body.accountHolder,
+    };
+    const payout = await PayoutDetails.findOneAndUpdate(
+      { owner: ownerId },
+      data,
+      { upsert: true, new: true }
+    );
+    res.json({ payout });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const carReport = async (req, res) => {
+  try {
+    const { carId } = req.params;
+    const car = await Car.findById(carId).lean();
+    if (!car) return res.status(404).json({ message: "Car not found" });
+
+    const bookings = await Booking.find({ car: carId })
+      .populate({ path: "user", select: "name fullName" })
+      .sort({ from: -1 })
+      .lean();
+
+    const mappedBookings = bookings.map((b) => ({
+      ...b,
+      from: b.pickupAt,
+      to: b.dropoffAt,
+      amount: b.totalAmount,
+      user: b.user,
+      status: b.status,
+      _id: b._id,
+    }));
+
+    const carAddedDate = car.createdAt || car.addedAt || car.dateAdded || car.created_at;
+    const now = new Date();
+    let monthsSinceAdded = 0;
+    if (carAddedDate) {
+      const added = new Date(carAddedDate);
+      monthsSinceAdded = (now.getFullYear() - added.getFullYear()) * 12 + (now.getMonth() - added.getMonth());
+    }
+
+    const totalBookings = mappedBookings.length;
+
+    const totalDays = mappedBookings.reduce((sum, b) => {
+      if (b.from && b.to) {
+        const days =
+          (new Date(b.to) - new Date(b.from)) / (1000 * 60 * 60 * 24) + 1;
+        return sum + Math.max(1, Math.round(days));
+      }
+      return sum;
+    }, 0);
+
+    const serviceRequired =
+      monthsSinceAdded >= 6 ||
+      totalBookings >= 10 ||
+      totalDays > 180;
+
+    res.json({
+      report: {
+        car,
+        totalBookings,
+        totalRevenue: mappedBookings.reduce((sum, b) => sum + (b.amount || 0), 0),
+        totalDays,
+        lastBookingDate: mappedBookings[0]?.from || null,
+        serviceRequired,
+        bookings: mappedBookings,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getOwnerNotifications = async (req, res) => {
+  try {
+    // Decode token manually (since you don't use protect middleware)
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const ownerId = decoded.id;
+
+    // Find all cars for this owner
+    const cars = await Car.find({ owner: ownerId }).select("_id");
+    const carIds = cars.map((c) => c._id);
+
+    // Find recent bookings for these cars (last 30 days)
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const bookings = await Booking.find({
+      car: { $in: carIds },
+      createdAt: { $gte: thirtyDaysAgo },
+      status: { $in: ["confirmed", "completed", "cancelled"] },
+    })
+      .populate({ path: "car", select: "brand model" })
+      .populate({ path: "user", select: "name fullName" })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Map bookings for notifications
+    const notifications = bookings.map((b) => ({
+      _id: b._id,
+      status: b.status,
+      car: b.car,
+      user: b.user,
+      to: b.dropoffAt || b.to || b.endDate,
+      createdAt: b.createdAt,
+    }));
+
+    // Overdue reminders: not completed and end date in the past
+    const overdue = bookings
+      .filter(
+        (b) =>
+          b.status !== "Completed" &&
+          (b.dropoffAt || b.to || b.endDate) &&
+          new Date(b.dropoffAt || b.to || b.endDate) < now
+      )
+      .map((b) => ({
+        _id: b._id + "_reminder",
+        status: "Reminder",
+        car: b.car,
+        user: b.user,
+        to: b.dropoffAt || b.to || b.endDate,
+        createdAt: b.createdAt,
+        message: `Booking for ${b.car?.brand} ${b.car?.model} with ${
+          b.user?.name || b.user?.fullName || "a renter"
+        } ended on ${new Date(b.dropoffAt || b.to || b.endDate).toLocaleDateString()} and is not marked as completed.`,
+      }));
+
+    // Custom sort: On the same date, Completed > Reminder > Confirmed > Cancelled > Pending/Request
+    const statusOrder = {
+      Completed: 1,
+      Reminder: 2,
+      Confirmed: 3,
+      Cancelled: 4,
+      Pending: 5,
+      Request: 5,
+    };
+
+    const allNotifications = [...notifications, ...overdue].sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      if (dateA === dateB) {
+        // If same date, use status order
+        return (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
+      }
+      // Newest first
+      return dateB - dateA;
+    });
+
+    res.json({
+      notifications: allNotifications,
+    });
+  } catch (err) {
+    console.error("Notification error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+

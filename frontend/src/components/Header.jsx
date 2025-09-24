@@ -107,7 +107,7 @@ export default function Navbar({ scrollEffect }) {
             </>
           ) : (
             <button
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#2f2240] bg-[#f6f4fa] hover:bg-[#ecebee] transition"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#2f2240] bg-[#3d3356] hover:bg-[#2f2240] transition"
               onClick={() =>
                 navigate(
                   profile.role === "admin"
@@ -127,9 +127,9 @@ export default function Navbar({ scrollEffect }) {
                     encodeURIComponent(profile.name || "User")
                 }
                 alt="Profile"
-                className="w-8 h-8 rounded-full object-cover border"
+                className="w-8 h-8 rounded-full object-cover"
               />
-              <span className="font-semibold text-[#2f2240]">
+              <span className="font-semibold text-[#fafafa]">
                 {profile.name || "Profile"}
               </span>
             </button>

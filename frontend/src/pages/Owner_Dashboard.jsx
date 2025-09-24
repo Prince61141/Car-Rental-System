@@ -8,6 +8,8 @@ import Settings from "../components/Owner_Dashboard/Settings";
 import Booking from "../components/Owner_Dashboard/Booking";
 import Notifications from "../components/Owner_Dashboard/Notifications";
 import Transactions from "../components/Owner_Dashboard/Transactions";
+import PaymentDetails from "../components/Owner_Dashboard/PaymentDetails";
+import CarReport from "../components/Owner_Dashboard/CarReport";
 import Chatbot from "../components/Chatbot";
 import Topbar from "../components/Owner_Dashboard/Topbar";
 
@@ -109,6 +111,8 @@ function Owner_Dashboard() {
             )}
             {activeSection === "Settings" && <Settings />}
             {activeSection === "Notifications" && <Notifications />}
+            {activeSection === "Payment Details" && <PaymentDetails />}
+            {activeSection === "Car Report" && <CarReport />}
             {activeSection === "Transactions" && <Transactions />}
             <Chatbot />
           </>
