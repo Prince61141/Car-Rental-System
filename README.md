@@ -4,16 +4,18 @@ A full-stack web application for managing car rentals, built with Node.js, Expre
 
 ## Features
 - User registration and authentication (with roles)
-- Car listing and management
+- Car listing, management, and document upload
 - Booking and rental management
+- Owner dashboard with car reports, payout management, and notifications
 - Email/OTP verification
 - Role-based access control (admin/user)
 - Responsive UI
+- Notification system for booking status and reminders
 
 ## Tech Stack
 - **Backend:** Node.js, Express, MongoDB
 - **Frontend:** React, Tailwind CSS
-- **Other:** JWT, Nodemailer, Twilio
+- **Other:** JWT, Nodemailer, Twilio(for SMS/OTP)
 
 ## Project Structure
 ```
@@ -30,6 +32,11 @@ Car Rental System/
 ├── frontend/
 │   ├── public/
 │   ├── src/
+│   │   ├── components/   # React components (dashboard, forms, etc.)
+│   │   ├── pages/        # Main pages (Home, Login, Register, etc.)
+│   │   ├── assets/       # Images, JSON data (banks, etc.)
+│   │   ├── App.js
+│   │   └── index.js
 │   ├── package.json
 │   └── tailwind.config.js
 └── README.md

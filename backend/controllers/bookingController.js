@@ -180,150 +180,100 @@ export const quote = async (req, res) => {
         violations[0]?.message ||
         (overlap ? "Selected dates overlap with an existing booking." : null),
     });
-  } catch {
-    return res.status(500).json({ success: false, message: "Server error" });
+  } catch (err) {
+    console.error("Booking creation error:", err); // This prints the error in your terminal
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
 export const createBooking = async (req, res) => {
+  const startedAt = Date.now();
   try {
-    const userId = req.user?._id || req.user?.id || req.user?.userId;
-    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    console.log("[createBooking] BODY:", req.body);
+    console.log("[createBooking] USER:", req.user?._id);
 
-    // Require renter role
-    const renter = await User.findById(userId).select("verified role");
-    if (!renter) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-    if ((renter.role && renter.role !== "renter") || (req.user?.role && req.user.role !== "renter")) {
-      return res
-        .status(403)
-        .json({ success: false, code: "ROLE_NOT_ALLOWED", message: "Only renter accounts can create bookings." });
-    }
-    if (renter.verified !== true) {
-      return res
-        .status(403)
-        .json({ success: false, code: "USER_NOT_VERIFIED", message: "Please verify your account to book." });
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const { carId, pickupAt, dropoffAt, paymentMethod = "cod", pickupNote } = req.body || {};
-    const start = toDate(pickupAt);
-    const end = toDate(dropoffAt);
-    if (!carId || !start || !end || end <= start) {
-      return res.status(400).json({ success: false, message: "Invalid inputs" });
+    const {
+      carId,
+      pickupAt,
+      dropoffAt,
+      paymentMethod = "cod",
+      paymentDetails,
+      pickupNote,
+    } = req.body || {};
+
+    if (!carId || !pickupAt || !dropoffAt) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
-    const now = new Date();
-    if (start.getTime() < now.getTime() + MIN_LEAD_HOURS * HOUR_MS) {
-      return res
-        .status(400)
-        .json({ success: false, code: "PICKUP_TOO_SOON", message: `Pickup must be at least ${MIN_LEAD_HOURS} hours from now.` });
-    }
-    const totalHours = hoursBetween(start, end);
-    if (totalHours < MIN_DURATION_HOURS) {
-      return res
-        .status(400)
-        .json({ success: false, code: "DURATION_TOO_SHORT", message: `Minimum rental duration is ${MIN_DURATION_HOURS} hours.` });
+    const start = new Date(pickupAt);
+    const end = new Date(dropoffAt);
+    if (isNaN(start) || isNaN(end) || end <= start) {
+      return res.status(400).json({ success: false, message: "Invalid pickup/dropoff times" });
     }
 
-    const car = await Car.findById(carId).populate("owner");
+    // Lead time & duration checks (adjust if you already have similar logic)
+    const diffHours = (end - start) / (1000 * 60 * 60);
+    if (diffHours < 1) {
+      return res.status(400).json({ success: false, message: "Minimum rental duration is 1 hour" });
+    }
+
+    // Fetch car
+    const car = await Car.findById(carId).select("pricePerDay owner status");
     if (!car) return res.status(404).json({ success: false, message: "Car not found" });
-    if (car.availability === false) {
-      return res.status(400).json({ success: false, message: "Car unavailable" });
-    }
 
-    const overlap = await hasOverlap(car._id, start, end);
+    // Price calc (simple: full days ceiling * pricePerDay)
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const rawDays = (end - start) / msPerDay;
+    const billableDays = Math.max(1, Math.ceil(rawDays - 1e-9)); // avoid floating rounding to next day incorrectly
+    const pricePerDay = Number(car.pricePerDay) || 0;
+    const totalAmount = billableDays * pricePerDay;
+
+    // Overlap check (basic)
+    const overlap = await Booking.findOne({
+      car: car._id,
+      status: { $in: ["pending", "confirmed"] },
+      $or: [
+        { pickupAt: { $lt: end }, dropoffAt: { $gt: start } },
+      ],
+    }).select("_id pickupAt dropoffAt");
     if (overlap) {
-      return res.status(409).json({ success: false, message: "Selected dates not available" });
+      return res.status(409).json({ success: false, message: "Car already booked for selected time" });
     }
 
-    const pricePerDay = Number(car.pricePerDay || 0);
-
-    let pricing;
-    if (totalHours <= 24) {
-      pricing = {
-        totalAmount: pricePerDay,
-      };
-    } else {
-      const fullDays = Math.floor(totalHours / 24);
-      const remainder = totalHours - fullDays * 24;
-      if (Math.abs(remainder) < 1e-9) {
-        pricing = { totalAmount: fullDays * pricePerDay };
-      } else {
-        const calc = calcWeekendRemainderPricing(start, end, pricePerDay);
-        pricing = { totalAmount: calc.totalAmount };
-      }
-    }
-
+    // Create booking
     const booking = await Booking.create({
       car: car._id,
       user: userId,
-      owner: car.owner?._id || car.owner,
+      owner: car.owner,
       pickupAt: start,
       dropoffAt: end,
       pricePerDay,
-      totalAmount: pricing.totalAmount,
+      totalAmount,
       pickupNote,
       status: "confirmed",
-      payment: { method: paymentMethod, status: "unpaid" },
+      payment: {
+        method: paymentMethod,
+        status: paymentMethod === "razorpay" && paymentDetails ? "paid" : "unpaid",
+        details: paymentDetails || {},
+      },
     });
 
-    try {
-      const carSnap = {
-        name: car.name || `${car.brand || ""} ${car.model || ""}`.trim(),
-        brand: car.brand,
-        model: car.model,
-        carnumber: car.carnumber,
-      };
-      const paidNow = booking.payment?.status === "paid";
-      const amount = Number(booking.totalAmount || booking.amount || 0);
-
-      // Ensure owner credit exists and is correct
-      await Transaction.updateOne(
-        { booking: booking._id, owner: booking.owner, type: "booking" },
-        {
-          $setOnInsert: {
-            owner: booking.owner,
-            booking: booking._id,
-            car: carSnap,
-            type: "booking",
-            direction: "credit",
-            amount,
-            currency: "INR",
-            note: `Booking ${booking._id} owner credit`,
-          },
-          $set: { status: paidNow ? "paid" : "pending" },
-        },
-        { upsert: true }
-      );
-
-      await Transaction.updateOne(
-        { booking: booking._id, renter: booking.user, type: "booking" },
-        {
-          $setOnInsert: {
-            renter: booking.user,
-            booking: booking._id,
-            car: carSnap,
-            type: "booking",
-            direction: "debit",
-            amount,
-            currency: "INR",
-            note: `Booking ${booking._id} renter debit`,
-          },
-          $set: { status: paidNow ? "paid" : "pending" },
-        },
-        { upsert: true }
-      );
-    } catch (e) {
-      console.error("log booking transactions failed:", e?.message || e);
-    }
+    console.log("[createBooking] CREATED:", booking._id, "payment.status:", booking.payment?.status);
 
     return res.status(201).json({
       success: true,
       booking,
+      meta: { durationHours: diffHours, billableDays, elapsedMs: Date.now() - startedAt },
     });
-  } catch {
-    return res.status(500).json({ success: false, message: "Server error" });
+  } catch (err) {
+    console.error("[createBooking] ERROR:", err?.message);
+    console.error(err?.stack);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
 

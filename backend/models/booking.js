@@ -35,13 +35,9 @@ const bookingSchema = new mongoose.Schema(
       index: true,
     },
     payment: {
-      method: { type: String, enum: ["cod", "online"], default: "cod" },
-      status: {
-        type: String,
-        enum: ["unpaid", "paid", "refunded"],
-        default: "unpaid",
-      },
-      transactionId: { type: String },
+      method: String,
+      status: String,
+      details: Object, // <-- add this if not present
     },
 
     completion: {

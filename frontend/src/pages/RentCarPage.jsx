@@ -191,6 +191,78 @@ function RentCarPage() {
     }
   };
 
+  // NEW: Handle Razorpay payment
+  const handleRazorpayPayment = async () => {
+    // 1. Create order on backend
+    const res = await fetch("http://localhost:5000/api/payment/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: quote.totalAmount,
+        receipt: `rcptid_${id}_${Date.now()}`,
+      }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert("Payment initiation failed");
+      return;
+    }
+
+    // 2. Open Razorpay checkout
+    const options = {
+      key: "",
+      amount: data.order.amount,
+      currency: data.order.currency,
+      name: "Car Rental",
+      description: `Booking for ${car.brand} ${car.model}`,
+      order_id: data.order.id,
+      handler: async function (response) {
+        // 3. On payment success, book the car
+        let token =
+          localStorage.getItem("token") || localStorage.getItem("accessToken");
+        if (!token) {
+          alert("Please login to book.");
+          return;
+        }
+        token = token.replace(/^"+|"+$/g, "");
+
+        const bookingRes = await fetch("http://localhost:5000/api/bookings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            carId: id,
+            pickupAt: new Date(pickupAt).toISOString(),
+            dropoffAt: new Date(dropoffAt).toISOString(),
+            paymentMethod: "razorpay",
+            paymentDetails: {
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+            },
+          }),
+        });
+        const bookingData = await bookingRes.json();
+        if (bookingRes.ok && bookingData.success) {
+          alert("Booking confirmed!");
+          setBooking({ loading: false, error: "", success: true });
+        } else {
+          alert("Booking failed: " + (bookingData.message || "Unknown error"));
+        }
+      },
+      prefill: {
+        name: "",
+        email: "",
+        contact: "",
+      },
+      theme: { color: "#2A1A3B" },
+    };
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  };
+
   // Convenience flag for UI
   const canBookAsRole = !auth.role || auth.role === "renter";
   const isOwner = auth.role === "owner";
@@ -419,7 +491,7 @@ function RentCarPage() {
                             disabled={
                               !quote.available || booking.loading || !canBookAsRole
                             }
-                            onClick={handleBook}
+                            onClick={handleRazorpayPayment}
                             className={`px-5 py-2 rounded-lg font-semibold whitespace-nowrap ${
                               !quote.available || !canBookAsRole
                                 ? "bg-gray-300 text-gray-600 cursor-not-allowed"
@@ -596,7 +668,7 @@ function RentCarPage() {
                             disabled={
                               !quote.available || booking.loading || !canBookAsRole
                             }
-                            onClick={handleBook}
+                            onClick={handleRazorpayPayment}
                             className={`px-5 py-2 rounded-lg font-semibold whitespace-nowrap ${
                               !quote.available || !canBookAsRole
                                 ? "bg-gray-300 text-gray-600 cursor-not-allowed"
