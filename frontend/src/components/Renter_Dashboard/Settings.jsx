@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import debounce from "lodash.debounce";
 
 function Settings() {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -33,7 +34,7 @@ function Settings() {
         return;
       }
       try {
-        const res = await fetch("http://localhost:5000/api/owners/me", {
+        const res = await fetch(`${API_URL}/api/owners/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -59,7 +60,7 @@ function Settings() {
     setMsg("Saving...");
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/owners/update", {
+      const res = await fetch(`${API_URL}/api/owners/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -115,7 +116,7 @@ function Settings() {
     const formData = new FormData();
     formData.append("photo", file);
     try {
-      const res = await fetch("http://localhost:5000/api/owners/update", {
+      const res = await fetch(`${API_URL}/api/owners/update`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -161,7 +162,7 @@ function Settings() {
     const token = localStorage.getItem("token");
     try {
       const res = await fetch(
-        "http://localhost:5000/api/users/change-password",
+        "${API_URL}/api/users/change-password",
         {
           method: "PUT",
           headers: {

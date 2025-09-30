@@ -113,7 +113,7 @@ const tools = [
 ];
 
 async function callTool(req, name, args) {
-  const base = process.env.APP_BASE_URL || "http://localhost:5000";
+  const base = process.env.APP_BASE_URL;
   const headers = {
     "Content-Type": "application/json",
     Authorization: req.headers.authorization || "",

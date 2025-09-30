@@ -12,6 +12,9 @@ import Transactions from "../components/Renter_Dashboard/Transactions";
 import { subscribeOpenBooking } from "../components/Renter_Dashboard/dashboardBus";
 
 function Renter_Dashboard() {
+  
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const [verified, setVerified] = useState(false);
   const [aadhar, setAadhar] = useState("");
   const [pan, setPan] = useState("");
@@ -44,7 +47,7 @@ function Renter_Dashboard() {
         return;
       }
       try {
-        const res = await fetch("http://localhost:5000/api/owners/me", {
+        const res = await fetch(`${API_URL}/api/owners/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();

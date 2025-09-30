@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 
 function Notifications() {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    fetch("http://localhost:5000/api/owners/notifications", {
+    fetch(`${API_URL}/api/owners/notifications`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))

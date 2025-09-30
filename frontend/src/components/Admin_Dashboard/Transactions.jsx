@@ -25,7 +25,7 @@ export default function AdminTransactions() {
   const [effect, setEffect] = useState(""); // "", "debit", "credit"
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [limit] = useState(10);
+  const [limit] = useState(8);
   const [loading, setLoading] = useState(false);
   const [menuFor, setMenuFor] = useState(null); // transaction id for open dropdown
   const [updatingId, setUpdatingId] = useState(null);

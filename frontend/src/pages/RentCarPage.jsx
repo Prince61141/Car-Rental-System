@@ -4,6 +4,9 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 
 function RentCarPage() {
+
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation(); 
@@ -59,7 +62,7 @@ function RentCarPage() {
   useEffect(() => {
     const fetchCar = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/cars/${id}/details`);
+        const res = await fetch(`${API_URL}/api/cars/${id}/details`);
         const data = await res.json();
         if (res.ok && data.success) {
           setCar(data.car);
@@ -112,7 +115,7 @@ function RentCarPage() {
       if (!pickupAt || !dropoffAt) return;
       setQuoting(true);
       try {
-        const res = await fetch("http://localhost:5000/api/bookings/quote", {
+        const res = await fetch("${API_URL}/api/bookings/quote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -156,7 +159,7 @@ function RentCarPage() {
       }
       token = token.replace(/^"+|"+$/g, "");
 
-      const res = await fetch("http://localhost:5000/api/bookings", {
+      const res = await fetch("${API_URL}/api/bookings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -191,76 +194,100 @@ function RentCarPage() {
     }
   };
 
-  // NEW: Handle Razorpay payment
+  const RZP_KEY = process.env.REACT_APP_RAZORPAY_KEY_ID || "";
+
   const handleRazorpayPayment = async () => {
-    // 1. Create order on backend
-    const res = await fetch("http://localhost:5000/api/payment/create-order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: quote.totalAmount,
-        receipt: `rcptid_${id}_${Date.now()}`,
-      }),
-    });
-    const data = await res.json();
-    if (!data.success) {
-      alert("Payment initiation failed");
+    // Check if key is available
+    if (!RZP_KEY) {
+      alert("Payment temporarily unavailable (missing key).");
       return;
     }
 
-    // 2. Open Razorpay checkout
-    const options = {
-      key: "",
-      amount: data.order.amount,
-      currency: data.order.currency,
-      name: "Car Rental",
-      description: `Booking for ${car.brand} ${car.model}`,
-      order_id: data.order.id,
-      handler: async function (response) {
-        // 3. On payment success, book the car
-        let token =
-          localStorage.getItem("token") || localStorage.getItem("accessToken");
-        if (!token) {
-          alert("Please login to book.");
-          return;
-        }
-        token = token.replace(/^"+|"+$/g, "");
+    if (!quote?.available || !quote?.totalAmount) {
+      alert("Car not available for selected time.");
+      return;
+    }
 
-        const bookingRes = await fetch("http://localhost:5000/api/bookings", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            carId: id,
-            pickupAt: new Date(pickupAt).toISOString(),
-            dropoffAt: new Date(dropoffAt).toISOString(),
-            paymentMethod: "razorpay",
-            paymentDetails: {
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature,
+    try {
+      // 1. Create order on backend
+      const res = await fetch("${API_URL}/api/payment/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: Math.round(quote.totalAmount * 100), // Convert to paise
+          receipt: `rcptid_${id}_${Date.now()}`,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert("Payment initiation failed");
+        return;
+      }
+
+      // 2. Open Razorpay checkout
+      const options = {
+        key: RZP_KEY, // Now using env variable
+        amount: data.order.amount,
+        currency: data.order.currency,
+        name: "AutoConnect Car Rental",
+        description: `Booking for ${car.brand} ${car.model}`,
+        order_id: data.order.id,
+        handler: async function (response) {
+          // 3. On payment success, book the car
+          let token =
+            localStorage.getItem("token") || localStorage.getItem("accessToken");
+          if (!token) {
+            alert("Please login to book.");
+            return;
+          }
+          token = token.replace(/^"+|"+$/g, "");
+
+          const bookingRes = await fetch("${API_URL}/api/bookings", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
             },
-          }),
-        });
-        const bookingData = await bookingRes.json();
-        if (bookingRes.ok && bookingData.success) {
-          alert("Booking confirmed!");
-          setBooking({ loading: false, error: "", success: true });
-        } else {
-          alert("Booking failed: " + (bookingData.message || "Unknown error"));
-        }
-      },
-      prefill: {
-        name: "",
-        email: "",
-        contact: "",
-      },
-      theme: { color: "#2A1A3B" },
-    };
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+            body: JSON.stringify({
+              carId: id,
+              pickupAt: new Date(pickupAt).toISOString(),
+              dropoffAt: new Date(dropoffAt).toISOString(),
+              paymentMethod: "razorpay",
+              paymentDetails: {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+              },
+            }),
+          });
+          const bookingData = await bookingRes.json();
+          if (bookingRes.ok && bookingData.success) {
+            alert("Booking confirmed!");
+            setBooking({ loading: false, error: "", success: true });
+          } else {
+            alert("Booking failed: " + (bookingData.message || "Unknown error"));
+            console.error("Booking error:", bookingData);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            console.log("Payment modal dismissed");
+          },
+        },
+        prefill: {
+          name: "",
+          email: "",
+          contact: "",
+        },
+        theme: { color: "#2A1A3B" },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error("Razorpay error:", error);
+      alert("Payment failed to initialize");
+    }
   };
 
   // Convenience flag for UI

@@ -14,13 +14,14 @@ import Chatbot from "../components/Chatbot";
 import Testimonial from "../components/Homepage/Testimonal";
 
 function HomePage() {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [selectedTab, setSelectedTab] = useState("All");
   const [cars, setCars] = useState([]);
 
   useEffect(() => {
     const fetchCars = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/cars/allcars");
+        const res = await fetch(`${API_URL}/api/cars/allcars`);
         const data = await res.json();
         if (res.ok && data.success) {
           setCars(data.cars);

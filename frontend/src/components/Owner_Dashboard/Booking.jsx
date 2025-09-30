@@ -36,6 +36,7 @@ const addressOf = (loc = {}) =>
   [loc.area, loc.city, loc.state].filter(Boolean).join(", ");
 
 function Booking({ ownerName }) {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [error, setError] = useState("");
@@ -60,7 +61,7 @@ function Booking({ ownerName }) {
       try {
         const token = localStorage.getItem("token");
         if (!token) return;
-        const res = await fetch("http://localhost:5000/api/cars/mycars", {
+        const res = await fetch(`${API_URL}/api/cars/mycars`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -83,7 +84,7 @@ function Booking({ ownerName }) {
   const viewLicensePdf = async (booking) => {
     try {
       const res = await fetch(
-        `http://localhost:5000/api/bookings/${booking._id}/renter-license`,
+        `${API_URL}/api/bookings/${booking._id}/renter-license`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -106,12 +107,9 @@ function Booking({ ownerName }) {
       setLoading(true);
       setError("");
       try {
-        const res = await fetch(
-          "http://localhost:5000/api/bookings?scope=owner",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const res = await fetch(`${API_URL}/api/bookings?scope=owner`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Failed to load bookings");
         setBookings(Array.isArray(data.bookings) ? data.bookings : []);
@@ -245,7 +243,7 @@ function Booking({ ownerName }) {
       fd.append("lateFee", String(Number.isFinite(lateFee) ? lateFee : 0));
 
       const res = await fetch(
-        `http://localhost:5000/api/bookings/${completeTarget._id}/complete`,
+        `${API_URL}/api/bookings/${completeTarget._id}/complete`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
@@ -324,13 +322,10 @@ function Booking({ ownerName }) {
   const cancelBooking = async (id) => {
     if (!window.confirm("Cancel this booking?")) return;
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/bookings/${id}/cancel`,
-        {
-          method: "POST", // CHANGED: backend expects POST
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const res = await fetch(`${API_URL}/api/bookings/${id}/cancel`, {
+        method: "POST", // CHANGED: backend expects POST
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Cancel failed");
       setBookings((prev) =>
@@ -888,10 +883,17 @@ function Booking({ ownerName }) {
                 </div>
                 <div className="bg-gray-50 border rounded-lg p-3">
                   <p className="text-gray-600 text-sm mb-1">
-                    Per-hour rate: <span className="font-semibold text-black"> ₹{Math.round(perHourRate)}</span>
+                    Per-hour rate:{" "}
+                    <span className="font-semibold text-black">
+                      {" "}
+                      ₹{Math.round(perHourRate)}
+                    </span>
                   </p>
                   <p className="text-gray-600 text-sm">
-                    Late fee: <span className="font-semibold text-black">₹{Number(lateFee || 0).toFixed(0)}</span>
+                    Late fee:{" "}
+                    <span className="font-semibold text-black">
+                      ₹{Number(lateFee || 0).toFixed(0)}
+                    </span>
                   </p>
                 </div>
               </div>

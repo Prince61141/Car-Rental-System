@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { CheckCircle, Loader2 } from "lucide-react";
 
 function RenterVerification({ onVerify }) {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [citizenship, setCitizenship] = useState("");
   const [aadhar, setAadhar] = useState("");
   const [pan, setPan] = useState("");
@@ -44,7 +45,7 @@ function RenterVerification({ onVerify }) {
         formData.append("pan", pan);
         formData.append("licenceNumber", licenceNumber);
         formData.append("licencePhoto", licencePhoto);
-        res = await fetch("http://localhost:5000/api/renters/verify-indian", {
+        res = await fetch(`${API_URL}/api/renters/verify-indian`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -58,7 +59,7 @@ function RenterVerification({ onVerify }) {
         formData.append("licenceNumber", licenceNumber);
         formData.append("licencePhoto", licencePhoto);
         res = await fetch(
-          "http://localhost:5000/api/renters/verify-foreigner",
+          `${API_URL}/api/renters/verify-foreigner`,
           {
             method: "POST",
             headers: {

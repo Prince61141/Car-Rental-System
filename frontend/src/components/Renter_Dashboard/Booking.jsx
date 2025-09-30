@@ -33,6 +33,7 @@ const statusStyles = {
 };
 
 function Booking({ openId = null, onOpened }) {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [error, setError] = useState("");
@@ -80,7 +81,7 @@ function Booking({ openId = null, onOpened }) {
       setLoading(true);
       setError("");
       try {
-        const res = await fetch("http://localhost:5000/api/bookings?scope=me", {
+        const res = await fetch(`${API_URL}/api/bookings?scope=me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -113,7 +114,7 @@ function Booking({ openId = null, onOpened }) {
     if (!window.confirm("Cancel this booking?")) return;
     try {
       const res = await fetch(
-        `http://localhost:5000/api/bookings/${id}/cancel`,
+        `${API_URL}/api/bookings/${id}/cancel`,
         {
           method: "PATCH",
           headers: {

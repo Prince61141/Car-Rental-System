@@ -3,6 +3,7 @@ import { FaChevronDown } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 export default function SearchBar() {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [pickupCity, setPickupCity] = useState("");
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
   const [showPickupDropdown, setShowPickupDropdown] = useState(false);
@@ -55,7 +56,7 @@ export default function SearchBar() {
   useEffect(() => {
     const fetchAllCities = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/bookings/cities");
+        const res = await fetch(`${API_URL}/api/bookings/cities`);
         const data = await res.json();
         if (res.ok && data.success) {
           setAllCities(data.cities);

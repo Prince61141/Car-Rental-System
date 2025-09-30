@@ -69,6 +69,7 @@ const decodeJwtId = (token) => {
   }
 };
 const getRenterId = async (headers) => {
+  const API_URL = process.env.REACT_APP_API_URL;
   const cached = localStorage.getItem("renterId");
   if (cached) return cached;
   const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
@@ -77,7 +78,7 @@ const getRenterId = async (headers) => {
     return fromJwt;
   }
   try {
-    const res = await fetch("http://localhost:5000/api/renters/me", { headers });
+    const res = await fetch(`${API_URL}/api/renters/me`, { headers });
     if (res.ok) {
       const data = await res.json();
       const id = data?.user?._id || data?._id || data?.id || null;
@@ -90,6 +91,7 @@ const getRenterId = async (headers) => {
 };
 
 function RenterTransactions() {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [rows, setRows] = useState([]);
@@ -127,8 +129,8 @@ function RenterTransactions() {
 
       // Try common endpoints
       const endpoints = [
-        `http://localhost:5000/api/transactions/renter?renterId=${encodeURIComponent(renterId)}`,
-        `http://localhost:5000/api/renters/transactions?renterId=${encodeURIComponent(renterId)}`,
+        `${API_URL}/api/transactions/renter?renterId=${encodeURIComponent(renterId)}`,
+        `${API_URL}/api/renters/transactions?renterId=${encodeURIComponent(renterId)}`,
       ];
 
       let payload = null;

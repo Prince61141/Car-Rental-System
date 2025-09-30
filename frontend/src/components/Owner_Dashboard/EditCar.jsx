@@ -7,6 +7,7 @@ import cityAreaMap from "../../assets/cityAreaMap.json";
 
 function EditCar() {
   const { id } = useParams();
+  const API_URL = process.env.REACT_APP_API_URL;
   const navigate = useNavigate();
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -105,7 +106,7 @@ function EditCar() {
     const fetchCar = async () => {
       const token = localStorage.getItem("token");
       try {
-        const res = await fetch(`http://localhost:5000/api/cars/${id}/details`, {
+        const res = await fetch(`${API_URL}/api/cars/${id}/details`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -263,7 +264,7 @@ function EditCar() {
 
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://localhost:5000/api/cars/${id}/update`, {
+      const res = await fetch(`${API_URL}/api/cars/${id}/update`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -300,7 +301,7 @@ function EditCar() {
     const token = localStorage.getItem("token");
     try {
       // NOTE: If your API path differs, change to: `/api/cars/${id}`
-      const res = await fetch(`http://localhost:5000/api/cars/${id}/delete`, {
+      const res = await fetch(`${API_URL}/api/cars/${id}/delete`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 export default function CarReport() {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCar, setSelectedCar] = useState(null);
@@ -8,7 +9,7 @@ export default function CarReport() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    fetch("http://localhost:5000/api/cars/mycars", {
+    fetch(`${API_URL}/api/cars/mycars`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
@@ -23,7 +24,7 @@ export default function CarReport() {
     setReport(null);
     setSelectedCar(carId);
     const token = localStorage.getItem("token");
-    fetch(`http://localhost:5000/api/owners/car-report/${carId}`, {
+    fetch(`${API_URL}/api/owners/car-report/${carId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))

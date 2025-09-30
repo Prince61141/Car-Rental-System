@@ -1,4 +1,4 @@
-const BASE = process.env.REACT_APP_API_BASE || "http://localhost:5000";
+const BASE = process.env.REACT_APP_API_URL;
 const auth = () => {
   const token = localStorage.getItem("token") || "";
   return token ? { Authorization: `Bearer ${token}` } : {};

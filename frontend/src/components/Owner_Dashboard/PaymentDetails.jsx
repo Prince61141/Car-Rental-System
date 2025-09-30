@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import banksJson from "../../assets/banks.json";
 
 export default function PaymentDetails() {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [account, setAccount] = useState(null);
-  const [loading, setLoading] = useState(true); // Start as true for initial load
+  const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [edit, setEdit] = useState(false);
   const [bankSearch, setBankSearch] = useState("");
@@ -14,7 +15,7 @@ export default function PaymentDetails() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     setLoading(true);
-    fetch("http://localhost:5000/api/owners/payout", {
+    fetch(`${API_URL}/api/owners/payout`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
@@ -38,7 +39,7 @@ export default function PaymentDetails() {
     setLoading(true);
     setSaved(false);
     const token = localStorage.getItem("token");
-    const res = await fetch("http://localhost:5000/api/owners/payout", {
+    const res = await fetch(`${API_URL}/api/owners/payout`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

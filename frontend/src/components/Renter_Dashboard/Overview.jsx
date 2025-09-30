@@ -67,8 +67,8 @@ const formatDateTime = (iso) => {
 };
 const addressOf = (loc = {}) => [loc?.area, loc?.city, loc?.state].filter(Boolean).join(", ");
 
-export default function Overview() {
-  // Renter-focused state
+function Overview() {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [bookings, setBookings] = useState([]);
   const [now, setNow] = useState(new Date());
   const [loading, setLoading] = useState(true);
@@ -91,7 +91,7 @@ export default function Overview() {
       setErr("");
       try {
         // Renter scope
-        const res = await fetch("http://localhost:5000/api/bookings?scope=me", {
+        const res = await fetch(`${API_URL}/api/bookings?scope=me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const json = await res.json();
@@ -397,3 +397,5 @@ export default function Overview() {
     </div>
   );
 }
+
+export default Overview;

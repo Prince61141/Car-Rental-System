@@ -7,6 +7,7 @@ import ListCar from "./ListCar";
 import { FiPlus } from "react-icons/fi";
 
 function Cars({ ownerName }) {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCar, setSelectedCar] = useState(null);
@@ -21,7 +22,7 @@ function Cars({ ownerName }) {
       try {
         const token = localStorage.getItem("token");
         if (!token) return;
-        const res = await fetch("http://localhost:5000/api/cars/mycars", {
+        const res = await fetch(`${API_URL}/api/cars/mycars`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -41,7 +42,7 @@ function Cars({ ownerName }) {
       if (!token) return alert("Authentication token not found");
 
       try {
-        const res = await fetch("http://localhost:5000/api/cars/mycars", {
+        const res = await fetch(`${API_URL}/api/cars/mycars`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -69,7 +70,7 @@ function Cars({ ownerName }) {
     const token = localStorage.getItem("token");
     try {
       const res = await fetch(
-        `http://localhost:5000/api/cars/${carId}/availability`,
+        `${API_URL}/api/cars/${carId}/availability`,
         {
           method: "PATCH",
           headers: {
@@ -99,7 +100,7 @@ function Cars({ ownerName }) {
     const token = localStorage.getItem("token");
     try {
       const res = await fetch(
-        `http://localhost:5000/api/cars/${carId}/availability`,
+        `${API_URL}/api/cars/${carId}/availability`,
         {
           method: "PATCH",
           headers: {

@@ -7,6 +7,7 @@ function useQuery() {
 }
 
 function CarsPage() {
+  const API_URL = process.env.REACT_APP_API_URL;
   const query = useQuery();
   const navigate = useNavigate();
   const [cars, setCars] = useState([]);
@@ -153,7 +154,7 @@ function CarsPage() {
       setLoading(true);
       try {
         const res = await fetch(
-          `http://localhost:5000/api/cars/search?pickup=${encodeURIComponent(
+          `${API_URL}/api/cars/search?pickup=${encodeURIComponent(
             pickupCity
           )}&dropoff=${encodeURIComponent(
             dropoffCity

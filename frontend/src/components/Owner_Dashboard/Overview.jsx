@@ -51,7 +51,8 @@ const formatDateTime = (iso) => {
 const addressOf = (loc = {}) =>
   [loc.area, loc.city, loc.state].filter(Boolean).join(", ");
 
-export default function Overview({ ownerName }) {
+function Overview({ ownerName }) {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [cars, setCars] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [now, setNow] = useState(new Date());
@@ -82,7 +83,7 @@ export default function Overview({ ownerName }) {
       try {
         const token = localStorage.getItem("token");
         if (!token) return;
-        const res = await fetch("http://localhost:5000/api/cars/mycars", {
+        const res = await fetch(`${API_URL}/api/cars/mycars`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -107,10 +108,10 @@ export default function Overview({ ownerName }) {
       setLoading(true);
       try {
         const [carsRes, bookRes] = await Promise.all([
-          fetch("http://localhost:5000/api/cars/mycars", {
+          fetch(`${API_URL}/api/cars/mycars`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch("http://localhost:5000/api/bookings?scope=owner", {
+          fetch(`${API_URL}/api/bookings?scope=owner`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -300,7 +301,7 @@ export default function Overview({ ownerName }) {
   const viewLicensePdf = async (booking) => {
     try {
       const res = await fetch(
-        `http://localhost:5000/api/bookings/${booking._id}/renter-license`,
+        `${API_URL}/api/bookings/${booking._id}/renter-license`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) {
@@ -744,3 +745,5 @@ export default function Overview({ ownerName }) {
     </div>
   );
 }
+
+export default Overview;

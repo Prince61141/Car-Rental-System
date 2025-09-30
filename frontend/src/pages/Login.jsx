@@ -5,6 +5,8 @@ import { jwtDecode } from "jwt-decode";
 import "../assets/loading.css";
 
 const Login = () => {
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
@@ -53,7 +55,7 @@ const Login = () => {
     setLoading(true);
     setMessage("");
     try {
-      const res = await fetch("http://localhost:5000/api/users/login", {
+      const res = await fetch(`${API_URL}/api/users/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -153,7 +155,6 @@ const Login = () => {
                 >
                   continue with google
                 </button>
-                
               </div>
               {message && (
                 <div className="text-red-600 text-sm text-center mt-2">
@@ -163,7 +164,10 @@ const Login = () => {
             </form>
             <div className="mt-5 text-[#3d3356]  center text-opacity-80 text-sm">
               Don't have account?{" "}
-              <a href="/register" className="text-[#2f2240] font-semibold hover:underline">
+              <a
+                href="/register"
+                className="text-[#2f2240] font-semibold hover:underline"
+              >
                 Sign up
               </a>
             </div>

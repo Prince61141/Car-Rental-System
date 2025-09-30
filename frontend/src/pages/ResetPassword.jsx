@@ -4,6 +4,8 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 
 function ResetPassword() {
+  const API_URL = process.env.REACT_APP_API_URL;
+  
   const { token } = useParams();
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
@@ -26,7 +28,7 @@ function ResetPassword() {
     setLoading(true);
     try {
       const res = await fetch(
-        `http://localhost:5000/api/reset-password/${token}`,
+        `${API_URL}/api/reset-password/${token}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

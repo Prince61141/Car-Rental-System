@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { CheckCircle, Loader2 } from "lucide-react";
 
 function OwnerVerification({ onVerify, aadhar, setAadhar, pan, setPan }) {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [loading, setLoading] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [error, setError] = useState("");
@@ -12,7 +13,7 @@ function OwnerVerification({ onVerify, aadhar, setAadhar, pan, setPan }) {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch("http://localhost:5000/api/owners/me", {
+    fetch(`${API_URL}/api/owners/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -31,7 +32,7 @@ function OwnerVerification({ onVerify, aadhar, setAadhar, pan, setPan }) {
         setVerifiedName("");
         try {
           const res = await fetch(
-            "http://localhost:5000/api/owners/lookup-document",
+            `${API_URL}/api/owners/lookup-document`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -64,7 +65,7 @@ function OwnerVerification({ onVerify, aadhar, setAadhar, pan, setPan }) {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/owners/verify-owner", {
+      const res = await fetch(`${API_URL}/api/owners/verify-owner`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

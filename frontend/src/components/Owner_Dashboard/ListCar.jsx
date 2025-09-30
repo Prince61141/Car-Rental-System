@@ -6,6 +6,7 @@ import cityAreaMap from "../../assets/cityAreaMap.json";
 import computeMaxPrice from "../../utils/pricePolicy";
 
 function ListCar({ onCarAdded, onClose }) {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [carForm, setCarForm] = useState({
@@ -383,7 +384,7 @@ function ListCar({ onCarAdded, onClose }) {
         formData.append("signature", carForm.documents.signature);
       }
 
-      const res = await fetch("http://localhost:5000/api/cars/addcar", {
+      const res = await fetch(`${API_URL}/api/cars/addcar`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

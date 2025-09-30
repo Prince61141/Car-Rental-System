@@ -6,6 +6,8 @@ import { jwtDecode } from "jwt-decode";
 import { GoogleLogin } from "@react-oauth/google";
 
 const Register = () => {
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     name: "",
@@ -67,7 +69,7 @@ const Register = () => {
     }
     setMessage("");
     try {
-      await axios.post("http://localhost:5000/api/users/resend-otp", {
+      await axios.post(`${API_URL}/api/users/resend-otp`, {
         tempToken,
       });
       setMessage("OTP resent! Check your phone.");
@@ -87,7 +89,7 @@ const Register = () => {
     }
     setMessage("");
     try {
-      const res = await axios.post("http://localhost:5000/api/users/register", {
+      const res = await axios.post("${API_URL}/api/users/register", {
         name: form.name,
         email: form.email,
         phone: form.phone,
@@ -113,7 +115,7 @@ const Register = () => {
     try {
       // Step 1: Verify OTP and get userId
       const res = await axios.post(
-        "http://localhost:5000/api/users/verify-otp",
+        "${API_URL}/api/users/verify-otp",
         {
           tempToken,
           otp: form.otp,

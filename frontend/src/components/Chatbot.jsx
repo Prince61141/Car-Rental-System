@@ -156,7 +156,8 @@ function parseAiCars(text = "") {
   return cars;
 }
 
-export default function Chatbot() {
+function Chatbot() {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState([
@@ -219,7 +220,7 @@ export default function Chatbot() {
       ];
 
       const token = localStorage.getItem("token") || "";
-      const res = await fetch("http://localhost:5000/api/ai/chat", {
+      const res = await fetch(`${API_URL}/api/ai/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -407,3 +408,5 @@ export default function Chatbot() {
     </div>
   );
 }
+
+export default Chatbot;

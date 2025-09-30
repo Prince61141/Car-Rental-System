@@ -21,6 +21,7 @@ const decodeJwtOwnerId = (token) => {
   }
 };
 const getOwnerId = async (headers) => {
+  const API_URL = process.env.REACT_APP_API_URL;
   const ls = localStorage.getItem("ownerId");
   if (ls) return ls;
 
@@ -31,7 +32,7 @@ const getOwnerId = async (headers) => {
   }
 
   try {
-    const res = await fetch("http://localhost:5000/api/owners/me", { headers });
+    const res = await fetch(`${API_URL}/api/owners/me`, { headers });
     if (res.ok) {
       const data = await res.json();
       const id =
@@ -91,6 +92,7 @@ const typeBadge = (t) => {
 };
 
 function Transactions() {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [rows, setRows] = useState([]);
@@ -137,8 +139,8 @@ function Transactions() {
       };
 
       const endpoints = [
-        `http://localhost:5000/api/transactions/owner?ownerId=${encodeURIComponent(ownerId)}`,
-        `http://localhost:5000/api/owners/transactions?ownerId=${encodeURIComponent(ownerId)}`,
+        `${API_URL}/api/transactions/owner?ownerId=${encodeURIComponent(ownerId)}`,
+        `${API_URL}/api/owners/transactions?ownerId=${encodeURIComponent(ownerId)}`,
       ];
 
       let okRes = null;

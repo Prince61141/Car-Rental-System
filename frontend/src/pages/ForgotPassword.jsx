@@ -3,6 +3,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 
 function ForgotPassword() {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -13,7 +14,7 @@ function ForgotPassword() {
     setLoading(true);
     setMsg("");
     try {
-      const res = await fetch("http://localhost:5000/api/forgot-password", {
+      const res = await fetch(`${API_URL}/api/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

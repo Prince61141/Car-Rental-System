@@ -3,6 +3,7 @@ import { FaBars, FaTimes } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function Navbar({ scrollEffect }) {
+  const API_URL = process.env.REACT_APP_API_URL;
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [photoPreview, setPhotoPreview] = useState("");
@@ -26,7 +27,7 @@ export default function Navbar({ scrollEffect }) {
         return;
       }
       try {
-        const res = await fetch("http://localhost:5000/api/owners/me", {
+        const res = await fetch(`${API_URL}/api/owners/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
