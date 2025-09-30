@@ -89,7 +89,7 @@ const Register = () => {
     }
     setMessage("");
     try {
-      const res = await axios.post("${API_URL}/api/users/register", {
+      const res = await axios.post(`${API_URL}/api/users/register`, {
         name: form.name,
         email: form.email,
         phone: form.phone,
@@ -115,7 +115,7 @@ const Register = () => {
     try {
       // Step 1: Verify OTP and get userId
       const res = await axios.post(
-        "${API_URL}/api/users/verify-otp",
+      `${API_URL}/api/users/verify-otp`,
         {
           tempToken,
           otp: form.otp,

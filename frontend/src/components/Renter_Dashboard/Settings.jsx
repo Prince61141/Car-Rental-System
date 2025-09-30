@@ -162,7 +162,7 @@ function Settings() {
     const token = localStorage.getItem("token");
     try {
       const res = await fetch(
-        "${API_URL}/api/users/change-password",
+        `${API_URL}/api/users/change-password`,
         {
           method: "PUT",
           headers: {

@@ -115,7 +115,7 @@ function RentCarPage() {
       if (!pickupAt || !dropoffAt) return;
       setQuoting(true);
       try {
-        const res = await fetch("${API_URL}/api/bookings/quote", {
+        const res = await fetch(`${API_URL}/api/bookings/quote`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -159,7 +159,7 @@ function RentCarPage() {
       }
       token = token.replace(/^"+|"+$/g, "");
 
-      const res = await fetch("${API_URL}/api/bookings", {
+      const res = await fetch(`${API_URL}/api/bookings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -210,11 +210,11 @@ function RentCarPage() {
 
     try {
       // 1. Create order on backend
-      const res = await fetch("${API_URL}/api/payment/create-order", {
+      const res = await fetch(`${API_URL}/api/payment/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: Math.round(quote.totalAmount * 100), // Convert to paise
+          amount: Math.round(quote.totalAmount), // Convert to paise
           receipt: `rcptid_${id}_${Date.now()}`,
         }),
       });
@@ -242,7 +242,7 @@ function RentCarPage() {
           }
           token = token.replace(/^"+|"+$/g, "");
 
-          const bookingRes = await fetch("${API_URL}/api/bookings", {
+          const bookingRes = await fetch(`${API_URL}/api/bookings`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
